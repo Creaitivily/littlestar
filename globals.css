@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Pale Pastel Theme - Light Mode */
+    --background: 253 253 253; /* Off-white with warmth */
+    --foreground: 71 85 105; /* Soft slate gray for text */
+    --card: 255 255 255; /* Pure white cards */
+    --card-foreground: 71 85 105;
+    --popover: 255 255 255;
+    --popover-foreground: 71 85 105;
+    
+    /* Pale pastel primary colors */
+    --primary: 217 170 219; /* Soft lavender */
+    --primary-foreground: 88 28 135; /* Deep purple for contrast */
+    --secondary: 220 252 231; /* Pale mint green */
+    --secondary-foreground: 21 128 61; /* Forest green for contrast */
+    --muted: 248 250 252; /* Very light blue-gray */
+    --muted-foreground: 100 116 139; /* Medium slate gray */
+    --accent: 254 242 242; /* Pale pink */
+    --accent-foreground: 190 18 60; /* Deep rose for contrast */
+    
+    /* Soft pastels for status */
+    --destructive: 251 146 60; /* Soft orange instead of harsh red */
+    --destructive-foreground: 255 255 255;
+    --success: 134 239 172; /* Pale green */
+    --success-foreground: 21 128 61;
+    --warning: 253 230 138; /* Pale yellow */
+    --warning-foreground: 146 64 14;
+    
+    /* Borders and inputs */
+    --border: 226 232 240; /* Very light slate */
+    --input: 241 245 249; /* Slightly darker than muted */
+    --ring: 217 170 219; /* Matches primary */
+    
+    /* Radius */
+    --radius: 0.75rem; /* Slightly more rounded for softness */
+  }
+
+  .dark {
+    /* Dark mode with muted pastels */
+    --background: 15 23 42; /* Dark slate */
+    --foreground: 241 245 249; /* Light text */
+    --card: 30 41 59; /* Dark slate cards */
+    --card-foreground: 241 245 249;
+    --popover: 30 41 59;
+    --popover-foreground: 241 245 249;
+    
+    --primary: 196 181 253; /* Lighter lavender for dark mode */
+    --primary-foreground: 30 27 75;
+    --secondary: 110 231 183; /* Brighter mint for dark mode */
+    --secondary-foreground: 6 78 59;
+    --muted: 51 65 85; /* Dark blue-gray */
+    --muted-foreground: 148 163 184;
+    --accent: 251 207 232; /* Soft pink for dark mode */
+    --accent-foreground: 131 24 67;
+    
+    --destructive: 248 113 113;
+    --destructive-foreground: 255 255 255;
+    --success: 110 231 183;
+    --success-foreground: 6 78 59;
+    --warning: 251 191 36;
+    --warning-foreground: 146 64 14;
+    
+    --border: 51 65 85;
+    --input: 51 65 85;
+    --ring: 196 181 253;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Custom pastel gradient backgrounds */
+.gradient-lavender {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+}
+
+.gradient-mint {
+  background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--muted)) 100%);
+}
+
+.gradient-soft {
+  background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--card)) 100%);
+}
+
+/* Soft shadows for cards */
+.card-soft {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+.card-soft-hover {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+/* Smooth animations */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

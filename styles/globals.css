@@ -1,0 +1,265 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cal+Sans:wght@400;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Variables for Little Star Theme */
+:root {
+  /* Little Star Color Palette */
+  --color-lavender-50: 248 246 255;
+  --color-lavender-100: 241 236 255;
+  --color-lavender-200: 230 230 250;
+  --color-lavender-300: 216 191 216;
+  --color-lavender-400: 221 160 221;
+  --color-lavender-500: 218 112 214;
+  --color-lavender-600: 186 85 211;
+  --color-lavender-700: 153 50 204;
+  --color-lavender-800: 139 0 139;
+  --color-lavender-900: 75 0 130;
+
+  --color-mint-50: 240 253 249;
+  --color-mint-100: 204 251 239;
+  --color-mint-200: 153 246 224;
+  --color-mint-300: 94 234 212;
+  --color-mint-400: 45 212 191;
+  --color-mint-500: 20 184 166;
+  --color-mint-600: 13 148 136;
+  --color-mint-700: 15 118 110;
+  --color-mint-800: 17 94 89;
+  --color-mint-900: 19 78 74;
+
+  --color-cream-50: 255 254 247;
+  --color-cream-100: 255 251 235;
+  --color-cream-200: 254 243 199;
+  --color-cream-300: 253 230 138;
+  --color-cream-400: 250 204 21;
+  --color-cream-500: 234 179 8;
+  --color-cream-600: 202 138 4;
+  --color-cream-700: 161 98 7;
+  --color-cream-800: 133 77 14;
+  --color-cream-900: 113 63 18;
+
+  --color-pink-50: 253 242 248;
+  --color-pink-100: 252 231 243;
+  --color-pink-200: 251 207 232;
+  --color-pink-300: 249 168 212;
+  --color-pink-400: 244 114 182;
+  --color-pink-500: 236 72 153;
+  --color-pink-600: 219 39 119;
+  --color-pink-700: 190 24 93;
+  --color-pink-800: 157 23 77;
+  --color-pink-900: 131 24 67;
+
+  /* Semantic Colors */
+  --background: var(--color-lavender-50);
+  --foreground: 25 25 28;
+  --card: var(--color-cream-50);
+  --card-foreground: 39 39 42;
+  --popover: var(--color-lavender-50);
+  --popover-foreground: 25 25 28;
+  --primary: var(--color-lavender-300);
+  --primary-foreground: 39 39 42;
+  --secondary: var(--color-mint-200);
+  --secondary-foreground: 39 39 42;
+  --muted: var(--color-cream-100);
+  --muted-foreground: 113 113 122;
+  --accent: var(--color-pink-200);
+  --accent-foreground: 39 39 42;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+  --border: var(--color-lavender-200);
+  --input: var(--color-cream-100);
+  --ring: var(--color-lavender-300);
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: 25 25 28;
+  --foreground: 250 250 250;
+  --card: 39 39 42;
+  --card-foreground: 250 250 250;
+  --popover: 39 39 42;
+  --popover-foreground: 250 250 250;
+  --primary: var(--color-lavender-400);
+  --primary-foreground: 25 25 28;
+  --secondary: var(--color-mint-400);
+  --secondary-foreground: 25 25 28;
+  --muted: 63 63 70;
+  --muted-foreground: 161 161 170;
+  --accent: var(--color-pink-400);
+  --accent-foreground: 25 25 28;
+  --border: 63 63 70;
+  --input: 63 63 70;
+  --ring: var(--color-lavender-400);
+}
+
+/* Base Styles */
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'cv11', 'cv03', 'cv04', 'cv09';
+}
+
+/* Custom Utility Classes */
+@layer components {
+  .star-gradient {
+    background: linear-gradient(135deg, 
+      rgb(var(--color-lavender-200)) 0%, 
+      rgb(var(--color-mint-200)) 50%, 
+      rgb(var(--color-pink-200)) 100%);
+  }
+
+  .hero-gradient {
+    background: linear-gradient(135deg,
+      rgb(var(--color-lavender-100)) 0%,
+      rgb(var(--color-mint-100)) 30%,
+      rgb(var(--color-cream-100)) 60%,
+      rgb(var(--color-pink-100)) 100%);
+  }
+
+  .card-gradient {
+    background: linear-gradient(135deg,
+      rgb(var(--color-cream-50)) 0%,
+      rgb(var(--color-lavender-50)) 100%);
+  }
+
+  .button-gradient {
+    background: linear-gradient(135deg,
+      rgb(var(--color-lavender-300)) 0%,
+      rgb(var(--color-pink-300)) 100%);
+  }
+
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg,
+      rgb(var(--color-lavender-600)) 0%,
+      rgb(var(--color-pink-600)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .shadow-soft {
+    box-shadow: 0 4px 6px -1px rgba(230, 230, 250, 0.1), 
+                0 2px 4px -1px rgba(230, 230, 250, 0.06);
+  }
+
+  .shadow-medium {
+    box-shadow: 0 10px 15px -3px rgba(230, 230, 250, 0.1), 
+                0 4px 6px -2px rgba(230, 230, 250, 0.05);
+  }
+
+  .shadow-large {
+    box-shadow: 0 20px 25px -5px rgba(230, 230, 250, 0.1), 
+                0 10px 10px -5px rgba(230, 230, 250, 0.04);
+  }
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.1); }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes slideUp {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  0% { transform: translateX(-20px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInRight {
+  0% { transform: translateX(20px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.5s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.5s ease-out;
+}
+
+/* Focus and Accessibility */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lavender-300;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--color-lavender-100));
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-lavender-300));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--color-lavender-400));
+}
+
+/* Print styles */
+@media print {
+  * {
+    color-adjust: exact;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --border: 0 0% 0%;
+    --ring: 0 0% 0%;
+  }
+}
