@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { createHealthAssistantPrompt } from '@/chatbotprompts/healthAssistant'
+import { createMilestoneBotPrompt } from '@/chatbotprompts/milestoneBotAssistant'
 
 // OpenRouter API configuration
 const OPENROUTER_API_BASE = 'https://openrouter.ai/api/v1'
@@ -107,8 +107,8 @@ class OpenRouterService {
       headers: {
         'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://little-star-app.com',
-        'X-Title': 'Little Star Health Assistant'
+        'HTTP-Referer': 'https://milestonebee.com',
+        'X-Title': 'MilestoneBee AI Assistant'
       },
       body: JSON.stringify({
         model: selectedModel.name,
@@ -198,7 +198,7 @@ class OpenRouterService {
 
   // Create system prompt with child context
   private createSystemPrompt(childContext: ChildHealthContext): string {
-    return createHealthAssistantPrompt(childContext)
+    return createMilestoneBotPrompt(childContext)
   }
 
   // Compress context for cost optimization

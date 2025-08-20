@@ -13,7 +13,7 @@ import { Health } from './pages/Health'
 import { Activities } from './pages/Activities'
 import { Memories } from './pages/Memories'
 import { Reports } from './pages/Reports'
-import { HealthInsights } from './pages/HealthInsights'
+import { Insights } from './pages/Insights'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { AdminLogin } from './pages/AdminLogin'
 import { TermsOfService } from './pages/TermsOfService'
@@ -85,10 +85,10 @@ function App() {
               </Layout>
             </ProtectedRoute>
           } />
-          <Route path="/health-insights" element={
+          <Route path="/insights" element={
             <ProtectedRoute>
               <Layout>
-                <HealthInsights />
+                <Insights />
               </Layout>
             </ProtectedRoute>
           } />

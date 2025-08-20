@@ -1,5 +1,6 @@
 import React from 'react'
 import { Navigation } from './Navigation'
+import { FloatingMilestoneBotWidget } from '../insights/FloatingMilestoneBotWidget'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -12,6 +13,7 @@ export function Layout({ children }: LayoutProps) {
       <main className="flex-1 p-8">
         {children}
       </main>
+      <FloatingMilestoneBotWidget />
     </div>
   )
 }

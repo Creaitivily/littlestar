@@ -11,7 +11,7 @@ import {
   LogOut,
   User,
   Plus,
-  Activity
+  Lightbulb
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '../../contexts/AuthContext'
@@ -21,7 +21,7 @@ const navigationItems = [
   { name: 'Dashboard', path: '/dashboard', icon: Home },
   { name: 'Growth', path: '/growth', icon: TrendingUp },
   { name: 'Health', path: '/health', icon: Heart },
-  { name: 'Health Insights', path: '/health-insights', icon: Activity },
+  { name: 'Insights', path: '/insights', icon: Lightbulb },
   { name: 'Activities', path: '/activities', icon: Calendar },
   { name: 'Memories', path: '/memories', icon: Camera },
   { name: 'Reports', path: '/reports', icon: FileText },
