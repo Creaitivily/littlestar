@@ -2,14 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# Little Star - Child Development Tracking App
+# MilestoneBee - Child Development Tracking App
 
 ## Project Overview
-Little Star is a minimalist, privacy-focused child development tracking application built with React, TypeScript, Vite, and Supabase. It allows parents to track their children's growth, activities, health records, and memories in a secure, user-friendly interface.
+MilestoneBee is a minimalist, privacy-focused child development tracking application built with React, TypeScript, Vite, and Supabase. It allows parents to track their children's growth, activities, health records, and memories in a secure, user-friendly interface with a delightful bee theme.
 
 ## Tech Stack
 - **Frontend**: React 18, TypeScript, Vite
-- **Styling**: Tailwind CSS with custom color palette (lavender, cream, mint)
+- **Styling**: Tailwind CSS with custom MilestoneBee color palette (sage, honey, peach, mint)
 - **UI Components**: Radix UI primitives with shadcn/ui styling
 - **Backend**: Supabase (PostgreSQL + Auth + Row Level Security)
 - **Authentication**: Supabase Auth with JWT tokens
@@ -212,4 +212,4 @@ npm run preview
 
 ---
 
-**Little Star** - Tracking precious moments, one milestone at a time ⭐👶✨
+**MilestoneBee** - Tracking precious milestones, one buzz at a time 🐝👶✨
