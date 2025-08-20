@@ -29,6 +29,7 @@ export function Dashboard() {
   const [childActivities, setChildActivities] = useState<any[]>([])
   const [childGrowthRecords, setChildGrowthRecords] = useState<any[]>([])
   const [childHealthRecords, setChildHealthRecords] = useState<any[]>([])
+  const [initialCheckComplete, setInitialCheckComplete] = useState(false)
   
   const { hasChildren, children, createChild, fetchChildren, user, fetchChildActivities, fetchChildGrowthRecords, fetchChildHealthRecords, loading } = useAuth()
   
@@ -37,18 +38,37 @@ export function Dashboard() {
   const upcomingAppointments = childHealthRecords.filter(record => record.date > new Date().toISOString()).slice(0, 2)
   const latestGrowth = childGrowthRecords[0] // Most recent growth record
 
+  // Reset initial check when user changes
   useEffect(() => {
-    // Show onboarding modal only if user has no children and auth is fully loaded
-    // Only check after loading is complete to ensure we have the actual children data
-    if (!loading && user && !hasChildren) {
-      console.log('User has no children, showing onboarding modal for user:', user.id)
-      setShowOnboarding(true)
-    } else if (!loading && user && hasChildren) {
-      // User has children, ensure modal is closed
-      console.log('User has children, ensuring onboarding modal is closed')
+    setInitialCheckComplete(false)
+    setShowOnboarding(false)
+  }, [user?.id])
+
+  // Handle initial children data check with delay to avoid race conditions
+  useEffect(() => {
+    if (!loading && user && !initialCheckComplete) {
+      // Add a small delay to ensure children data is fully loaded
+      const timer = setTimeout(() => {
+        console.log('Performing initial children check for user:', user.id)
+        console.log('Has children:', hasChildren, 'Children count:', children.length)
+        
+        if (!hasChildren) {
+          console.log('No children found, showing onboarding modal')
+          setShowOnboarding(true)
+        } else {
+          console.log('User has children, keeping modal closed')
+          setShowOnboarding(false)
+        }
+        setInitialCheckComplete(true)
+      }, 500) // 500ms delay to ensure data is loaded
+      
+      return () => clearTimeout(timer)
+    } else if (initialCheckComplete && hasChildren && showOnboarding) {
+      // If children are added after initial check, close the modal
+      console.log('Children added after initial check, closing modal')
       setShowOnboarding(false)
     }
-  }, [user, hasChildren, loading])
+  }, [user, hasChildren, loading, children.length, initialCheckComplete, showOnboarding])
 
   // Auto-select first child when children are loaded
   useEffect(() => {
@@ -114,6 +134,7 @@ export function Dashboard() {
       
       console.log('Child created successfully, closing modals and refreshing data')
       setShowOnboarding(false)
+      setInitialCheckComplete(true) // Mark as complete since child was created
       
       // Clear the onboarding flag since child was successfully created
       if (user?.id) {
