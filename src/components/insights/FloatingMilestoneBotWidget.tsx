@@ -16,6 +16,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '../../contexts/AuthContext'
+import { openRouterService } from '../../lib/openRouterService'
+import type { ChildHealthContext } from '../../lib/openRouterService'
 
 interface Message {
   id: string
@@ -33,23 +35,36 @@ interface FloatingMilestoneBotWidgetProps {
 }
 
 export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWidgetProps) {
-  const { children } = useAuth()
+  const { children, user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: `Hi there! 🐝 I'm MilestoneBot, your friendly parenting companion! I'm here to help you with any questions about your child's development. What would you like to know?`,
-      isBot: true,
-      timestamp: new Date()
-    }
-  ])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [hasNewMessage, setHasNewMessage] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const selectedChild = children && children.length > 0 ? children[0] : null
+  
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      content: `Hi! I'm MilestoneBot, your warm and supportive parenting companion! 😊 I'm here to help with all your childcare questions—from feeding and sleep to development and health. I provide evidence-based guidance in a caring, jargon-free way. What would you like to know?`,
+      isBot: true,
+      timestamp: new Date()
+    }
+  ])
+
+  // Update welcome message when child data is available
+  useEffect(() => {
+    if (selectedChild) {
+      setMessages([{
+        id: '1',
+        content: `Hi! I'm MilestoneBot, your parenting sidekick! 😊 I'm here to help with ${selectedChild.name}'s care and development. From sleep challenges to feeding questions, developmental milestones to health concerns—I've got evidence-based guidance tailored just for ${selectedChild.name} at ${calculateAge(selectedChild.birth_date)}. What can I help you with today?`,
+        isBot: true,
+        timestamp: new Date()
+      }])
+    }
+  }, [selectedChild])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -90,7 +105,25 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
   ]
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return
+    if (!inputMessage.trim() || isLoading || !user) return
+
+    // Handle case when no child is selected
+    if (!selectedChild) {
+      const noChildMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "Hi there! 🐝 I'd love to help you with personalized advice, but I don't see any child profiles yet. Please add your child's information first, then I can give you age-appropriate guidance!",
+        isBot: true,
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        content: inputMessage,
+        isBot: false,
+        timestamp: new Date()
+      }, noChildMessage])
+      setInputMessage('')
+      return
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -102,27 +135,37 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
       }
     }
 
+    const currentInput = inputMessage
     setMessages(prev => [...prev, userMessage])
     setInputMessage('')
     setIsLoading(true)
 
     try {
-      // TODO: Integrate with enhanced MilestoneBot API
-      const response = await fetch('/api/milestonebot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: inputMessage,
-          context: userMessage.context,
-          conversationHistory: messages.slice(-5) // Last 5 messages for context
-        })
-      })
+      // Create child health context for the AI
+      const childAge = selectedChild.birth_date ? 
+        Math.floor((Date.now() - new Date(selectedChild.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 30.44)) : 0
 
-      const data = await response.json()
+      const childContext: ChildHealthContext = {
+        id: selectedChild.id,
+        name: selectedChild.name,
+        ageMonths: childAge,
+        ageDisplay: calculateAge(selectedChild.birth_date),
+        // Note: You could enhance this with actual growth/health data from your database
+        latestGrowth: undefined,
+        vaccinationStatus: undefined,
+        milestoneProgress: undefined
+      }
+
+      // Call the OpenRouter service directly
+      const aiResponse = await openRouterService.processHealthQuery(
+        currentInput,
+        user.id,
+        childContext
+      )
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: data.response || "I'm still learning! 🐝 Could you try rephrasing your question?",
+        content: aiResponse.content,
         isBot: true,
         timestamp: new Date()
       }
@@ -137,7 +180,9 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
       console.error('MilestoneBot error:', error)
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "Oops! I'm having a tiny bee-sized hiccup. Please try again in a moment! 🐝",
+        content: error instanceof Error && error.message.includes('limit') 
+          ? "I've reached my daily chat limit! 🐝 Please try again tomorrow or check your usage in settings."
+          : "Oops! I'm having a tiny bee-sized hiccup. Please try again in a moment! 🐝",
         isBot: true,
         timestamp: new Date()
       }

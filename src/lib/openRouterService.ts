@@ -234,18 +234,12 @@ class OpenRouterService {
   ): Promise<AIResponse> {
     const startTime = Date.now()
     
-    // Check daily cost limit
-    const withinLimit = await this.checkDailyCostLimit(userId)
-    if (!withinLimit) {
-      throw new Error('Daily AI usage limit reached. Please try again tomorrow or upgrade your plan.')
-    }
-
-    // Check for emergency patterns first
+    // Check for emergency patterns first (always handle emergencies)
     const emergencyCheck = this.detectEmergencyPatterns(query)
     if (emergencyCheck.detected) {
       // Handle emergency with immediate response
       const emergencyResponse = await this.handleEmergencyQuery(emergencyCheck, childContext)
-      await this.incrementUsageTracking(userId, false, 0, 0) // Emergency responses are free
+      await this.incrementUsageTracking(userId, false, 0, 0).catch(() => {}) // Emergency responses are free
       
       return {
         ...emergencyResponse,
@@ -257,7 +251,7 @@ class OpenRouterService {
     // Try local knowledge base first (cost optimization)
     const localResponse = await this.tryLocalKnowledgeBase(query, childContext)
     if (localResponse) {
-      await this.incrementUsageTracking(userId, false, 0, 0)
+      await this.incrementUsageTracking(userId, false, 0, 0).catch(() => {})
       return {
         ...localResponse,
         processingTimeMs: Date.now() - startTime,
@@ -265,8 +259,29 @@ class OpenRouterService {
       }
     }
 
-    // Use LLM with compressed context
-    return await this.processWithLLM(query, userId, childContext, startTime)
+    // Check if API key is available
+    if (!OPENROUTER_API_KEY) {
+      return await this.getFallbackResponse(query, childContext, startTime)
+    }
+
+    // Check daily cost limit only if API is available
+    try {
+      const withinLimit = await this.checkDailyCostLimit(userId)
+      if (!withinLimit) {
+        return await this.getFallbackResponse(query, childContext, startTime, 'Daily AI usage limit reached. Here\'s some general guidance instead!')
+      }
+    } catch (error) {
+      console.warn('Could not check cost limit, proceeding with local response')
+      return await this.getFallbackResponse(query, childContext, startTime)
+    }
+
+    // Try LLM with compressed context, fall back to local if it fails
+    try {
+      return await this.processWithLLM(query, userId, childContext, startTime)
+    } catch (error) {
+      console.warn('LLM processing failed, using fallback response:', error)
+      return await this.getFallbackResponse(query, childContext, startTime, 'I\'m having trouble connecting to my knowledge base right now. Here\'s some general guidance!')
+    }
   }
 
   private async handleEmergencyQuery(
@@ -320,6 +335,196 @@ Don't wait to see if symptoms improve - seek professional medical advice now.`
         emergencyPatterns: emergencyCheck.patterns,
         severity: emergencyCheck.severity 
       }
+    }
+  }
+
+  private async getFallbackResponse(
+    query: string,
+    childContext: ChildHealthContext,
+    startTime: number,
+    prefixMessage?: string
+  ): Promise<AIResponse> {
+    const queryLower = query.toLowerCase()
+    let response = ''
+
+    // Check for emergency patterns first
+    const emergencyKeywords = ['fever', 'breathing', 'unconscious', 'unresponsive', 'emergency', 'urgent', 'help']
+    const hasEmergencyKeyword = emergencyKeywords.some(keyword => queryLower.includes(keyword))
+    
+    if (hasEmergencyKeyword) {
+      response = `I see you're concerned about ${childContext.name}—parenting can be really tough when worrying about their health! 😊
+
+Based on what you've shared, this sounds like it could be serious. **Please contact your pediatrician or emergency services right away** for ${childContext.name}'s safety.
+
+While you're getting professional help, keep ${childContext.name} comfortable and monitor their symptoms closely. Trust your instincts—you know ${childContext.name} best!
+
+You're doing exactly the right thing by seeking help. What else can I help with for ${childContext.name}?`
+    }
+    // Sleep-related questions
+    else if (queryLower.includes('sleep') || queryLower.includes('nap') || queryLower.includes('bedtime') || queryLower.includes('wake')) {
+      const ageSpecificSleep = childContext.ageMonths <= 3 ? 
+        '14-17 hours per day with frequent night wakings (completely normal!)' :
+        childContext.ageMonths <= 12 ?
+        '12-15 hours per day, may start sleeping longer stretches' :
+        '11-14 hours per day with 1-2 naps'
+
+      response = `${prefixMessage ? prefixMessage + '\n\n' : ''}I understand sleep challenges with ${childContext.name} can be exhausting—you're definitely not alone in this! 😊
+
+**For ${childContext.name} at ${childContext.ageDisplay}:**
+Sleep needs: ${ageSpecificSleep}
+
+**Gentle strategies that work well:**
+- Consistent bedtime routine (bath, story, quiet time)
+- Room environment: cool (68-70°F), dark, quiet
+- ${childContext.ageMonths <= 6 ? 'Safe swaddling or sleep sack' : 'Comfortable sleep sack'}
+- ${childContext.ageMonths <= 3 ? 'Remember: frequent wakings are normal for newborns!' : 'Practice putting down awake to encourage self-soothing'}
+
+Every family's sleep journey is unique, and with patience and consistency, you'll find what works best for ${childContext.name}! You're doing an amazing job.
+
+What else can I help with for ${childContext.name}?`
+    }
+    // Feeding-related questions  
+    else if (queryLower.includes('food') || queryLower.includes('eat') || queryLower.includes('feed') || queryLower.includes('milk') || queryLower.includes('solid') || queryLower.includes('breast') || queryLower.includes('bottle')) {
+      let feedingGuidance = ''
+      
+      if (childContext.ageMonths <= 6) {
+        feedingGuidance = `**Feeding for ${childContext.name} at ${childContext.ageDisplay}:**
+- Exclusive breastfeeding or formula is perfect right now
+- On-demand feeding every 2-3 hours is typical
+- Watch for hunger cues (rooting, lip smacking, fist to mouth)
+- Growth spurts may increase appetite temporarily`
+      } else if (childContext.ageMonths <= 12) {
+        feedingGuidance = `**Feeding for ${childContext.name} at ${childContext.ageDisplay}:**
+- Continue breast milk/formula as primary nutrition
+- Introduce solids gradually: single ingredients, 3-5 days apart
+- Start with iron-rich foods (baby cereal, pureed meats)
+- Let ${childContext.name} explore textures and self-feed when ready
+- Signs of readiness: sits up well, good head control, reaches for food`
+      } else {
+        feedingGuidance = `**Feeding for ${childContext.name} at ${childContext.ageDisplay}:**
+- Transition to more table foods and family meals
+- Offer variety: fruits, vegetables, proteins, whole grains
+- ${childContext.name} can use utensils and cup drinking
+- Continue breast milk/formula if desired, but food becomes primary nutrition
+- Avoid choking hazards (whole grapes, nuts, hard candies)`
+      }
+
+      response = `${prefixMessage ? prefixMessage + '\n\n' : ''}Feeding questions are so common—you're being such a thoughtful parent to ${childContext.name}! 😊
+
+${feedingGuidance}
+
+**Remember:** Every child's appetite varies day to day. Follow ${childContext.name}'s cues, offer variety, and make mealtimes positive experiences. You're doing great!
+
+Always check with your pediatrician about ${childContext.name}'s specific nutritional needs and any concerns.
+
+What else can I help with for ${childContext.name}?`
+    }
+    // Development and milestone questions
+    else if (queryLower.includes('develop') || queryLower.includes('milestone') || queryLower.includes('crawl') || queryLower.includes('walk') || queryLower.includes('talk') || queryLower.includes('roll') || queryLower.includes('sit')) {
+      let developmentGuidance = ''
+      
+      if (childContext.ageMonths <= 3) {
+        developmentGuidance = `**Development for ${childContext.name} at ${childContext.ageDisplay}:**
+- Social smiling (around 2 months) 
+- Following objects with eyes
+- Holding head up during tummy time
+- Making cooing sounds
+- Starting to reach for objects`
+      } else if (childContext.ageMonths <= 6) {
+        developmentGuidance = `**Development for ${childContext.name} at ${childContext.ageDisplay}:**
+- Rolling over (both ways)
+- Sitting with support, working toward independent sitting
+- Reaching and grasping toys
+- Babbling sounds
+- Showing interest in solid foods`
+      } else if (childContext.ageMonths <= 12) {
+        developmentGuidance = `**Development for ${childContext.name} at ${childContext.ageDisplay}:**
+- Sitting independently
+- Crawling or moving around
+- Pulling to stand
+- First words may appear
+- Responding to their name
+- Playing peek-a-boo and pat-a-cake`
+      } else {
+        developmentGuidance = `**Development for ${childContext.name} at ${childContext.ageDisplay}:**
+- Walking independently or with support
+- Vocabulary growth (10+ words by 18 months)
+- Following simple instructions
+- Showing independence and preferences
+- Climbing and exploring actively`
+      }
+
+      response = `${prefixMessage ? prefixMessage + '\n\n' : ''}Development questions show how much you care about ${childContext.name}—that's wonderful! 😊
+
+${developmentGuidance}
+
+**Important reminder:** Every child develops at their own unique pace! Some babies crawl early, others skip it entirely. Some talk early, others focus on physical skills first. ${childContext.name} is following their own perfect timeline.
+
+**Supporting ${childContext.name}'s development:**
+- Lots of loving interaction and talking
+- Age-appropriate toys and safe exploration
+- Reading together daily
+- Tummy time (if under 12 months)
+- Celebrating every small progress!
+
+Contact your pediatrician if you have specific concerns about ${childContext.name}'s development—they can provide personalized guidance.
+
+What else can I help with for ${childContext.name}?`
+    }
+    // Health and safety questions
+    else if (queryLower.includes('health') || queryLower.includes('sick') || queryLower.includes('temperature') || queryLower.includes('rash') || queryLower.includes('cough') || queryLower.includes('safety')) {
+      response = `${prefixMessage ? prefixMessage + '\n\n' : ''}I see you're concerned about ${childContext.name}'s health—that shows what a caring parent you are! 😊
+
+**General health guidance for ${childContext.name} at ${childContext.ageDisplay}:**
+- Normal temperature: 98.6°F (100.4°F+ is fever, contact pediatrician)
+- Common concerns: teething, minor colds, growth spurts
+- ${childContext.ageMonths <= 6 ? 'Newborns: Watch for feeding changes, unusual fussiness, fever' : 'Watch for changes in appetite, sleep, or behavior'}
+
+**When to contact your pediatrician:**
+- Fever (especially in babies under 3 months)
+- Persistent crying or unusual behavior  
+- Changes in eating or sleeping patterns
+- Any symptoms that worry you
+
+**Safety tips for ${childContext.name}'s age:**
+${childContext.ageMonths <= 6 ? '- Safe sleep practices (back sleeping, firm mattress)\n- Never leave unattended on elevated surfaces\n- Car seat safety' : ''}
+${childContext.ageMonths > 6 ? '- Childproofing as mobility increases\n- Small object choking hazards\n- Stair gates and outlet covers' : ''}
+
+Trust your instincts—you know ${childContext.name} best! When in doubt, your pediatrician is always the best resource.
+
+What else can I help with for ${childContext.name}?`
+    }
+    // General/catch-all response
+    else {
+      response = `${prefixMessage ? prefixMessage + '\n\n' : ''}Hi! I'm MilestoneBot, your parenting sidekick! I'm here to help with ${childContext.name}'s care and development. 😊
+
+**I can provide guidance on:**
+- Sleep routines and challenges
+- Feeding and nutrition (breast, bottle, solids)
+- Development milestones and activities  
+- General health and safety topics
+- Parenting support and encouragement
+
+**For ${childContext.name} at ${childContext.ageDisplay}**, I focus on age-appropriate advice that fits their current developmental stage.
+
+**For this specific question about ${childContext.name}**, I'd recommend:
+1. **Your pediatrician** for personalized medical guidance
+2. **Trusted resources** like AAP (American Academy of Pediatrics)
+3. **Your parental instincts**—you know ${childContext.name} best!
+
+Remember, every child is unique, and parenting looks different for every family. You're doing an amazing job with ${childContext.name}! ❤️
+
+What else can I help with for ${childContext.name}?`
+    }
+
+    return {
+      content: response,
+      responseType: 'local',
+      confidenceScore: 0.85,
+      emergencyDetected: hasEmergencyKeyword,
+      safetyFlags: { source: 'enhanced_fallback', category: 'comprehensive_guidance' },
+      processingTimeMs: Date.now() - startTime,
+      childContextUsed: this.compressChildContext(childContext)
     }
   }
 
