@@ -30,7 +30,7 @@ export function Dashboard() {
   const [childGrowthRecords, setChildGrowthRecords] = useState<any[]>([])
   const [childHealthRecords, setChildHealthRecords] = useState<any[]>([])
   
-  const { hasChildren, children, createChild, fetchChildren, user, fetchChildActivities, fetchChildGrowthRecords, fetchChildHealthRecords } = useAuth()
+  const { hasChildren, children, createChild, fetchChildren, user, fetchChildActivities, fetchChildGrowthRecords, fetchChildHealthRecords, loading } = useAuth()
   
   // Use child-specific data or fall back to mock data
   const recentActivities = childActivities.slice(0, 3).length > 0 ? childActivities.slice(0, 3) : activities.slice(0, 3)
@@ -38,15 +38,17 @@ export function Dashboard() {
   const latestGrowth = childGrowthRecords[0] // Most recent growth record
 
   useEffect(() => {
-    // Show onboarding modal only if user has no children on initial load
-    // Check if user exists, has no children, and modal hasn't been shown yet this session
-    if (user && !hasChildren && !localStorage.getItem(`onboarding_shown_${user.id}`)) {
-      console.log('No children found, showing onboarding modal for user:', user.id)
+    // Show onboarding modal only if user has no children and auth is fully loaded
+    // Only check after loading is complete to ensure we have the actual children data
+    if (!loading && user && !hasChildren) {
+      console.log('User has no children, showing onboarding modal for user:', user.id)
       setShowOnboarding(true)
-      // Mark that onboarding has been shown this session
-      localStorage.setItem(`onboarding_shown_${user.id}`, 'true')
+    } else if (!loading && user && hasChildren) {
+      // User has children, ensure modal is closed
+      console.log('User has children, ensuring onboarding modal is closed')
+      setShowOnboarding(false)
     }
-  }, [user, hasChildren])
+  }, [user, hasChildren, loading])
 
   // Auto-select first child when children are loaded
   useEffect(() => {
