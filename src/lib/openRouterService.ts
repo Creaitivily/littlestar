@@ -268,7 +268,7 @@ class OpenRouterService {
     try {
       const withinLimit = await this.checkDailyCostLimit(userId)
       if (!withinLimit) {
-        return await this.getFallbackResponse(query, childContext, startTime, 'Daily AI usage limit reached. Here\'s some general guidance instead!')
+        return await this.getFallbackResponse(query, childContext, startTime)
       }
     } catch (error) {
       console.warn('Could not check cost limit, proceeding with local response')
@@ -280,7 +280,7 @@ class OpenRouterService {
       return await this.processWithLLM(query, userId, childContext, startTime)
     } catch (error) {
       console.warn('LLM processing failed, using fallback response:', error)
-      return await this.getFallbackResponse(query, childContext, startTime, 'I\'m having trouble connecting to my knowledge base right now. Here\'s some general guidance!')
+      return await this.getFallbackResponse(query, childContext, startTime)
     }
   }
 
@@ -341,17 +341,27 @@ Don't wait to see if symptoms improve - seek professional medical advice now.`
   private async getFallbackResponse(
     query: string,
     childContext: ChildHealthContext,
-    startTime: number,
-    prefixMessage?: string
+    startTime: number
   ): Promise<AIResponse> {
     const queryLower = query.toLowerCase()
     let response = ''
 
     // Check for emergency patterns first
-    const emergencyKeywords = ['fever', 'breathing', 'unconscious', 'unresponsive', 'emergency', 'urgent', 'help']
+    const emergencyKeywords = ['fever', 'breathing', 'unconscious', 'unresponsive', 'emergency', 'urgent']
     const hasEmergencyKeyword = emergencyKeywords.some(keyword => queryLower.includes(keyword))
     
-    if (hasEmergencyKeyword) {
+    // More specific emergency patterns (not just "help")
+    const criticalHelp = queryLower.includes('help') && (
+      queryLower.includes('urgent') || 
+      queryLower.includes('emergency') || 
+      queryLower.includes('serious') ||
+      queryLower.includes('hospital') ||
+      queryLower.includes('911')
+    )
+    
+    const isEmergency = hasEmergencyKeyword || criticalHelp
+    
+    if (isEmergency) {
       response = `I see you're concerned about ${childContext.name}—parenting can be really tough when worrying about their health! 😊
 
 Based on what you've shared, this sounds like it could be serious. **Please contact your pediatrician or emergency services right away** for ${childContext.name}'s safety.
@@ -361,14 +371,24 @@ While you're getting professional help, keep ${childContext.name} comfortable an
 You're doing exactly the right thing by seeking help. What else can I help with for ${childContext.name}?`
     }
     // Sleep-related questions
-    else if (queryLower.includes('sleep') || queryLower.includes('nap') || queryLower.includes('bedtime') || queryLower.includes('wake')) {
+    else if (
+      queryLower.includes('sleep') || 
+      queryLower.includes('nap') || 
+      queryLower.includes('bedtime') || 
+      queryLower.includes('wake') ||
+      queryLower.includes('nighttime') ||
+      queryLower.includes('night') ||
+      queryLower.includes('sleeping') ||
+      queryLower.includes('tired')
+    ) {
+      console.log('🛏️ Detected sleep-related query:', query)
       const ageSpecificSleep = childContext.ageMonths <= 3 ? 
         '14-17 hours per day with frequent night wakings (completely normal!)' :
         childContext.ageMonths <= 12 ?
         '12-15 hours per day, may start sleeping longer stretches' :
         '11-14 hours per day with 1-2 naps'
 
-      response = `${prefixMessage ? prefixMessage + '\n\n' : ''}I understand sleep challenges with ${childContext.name} can be exhausting—you're definitely not alone in this! 😊
+      response = `I understand sleep challenges with ${childContext.name} can be exhausting—you're definitely not alone in this! 😊
 
 **For ${childContext.name} at ${childContext.ageDisplay}:**
 Sleep needs: ${ageSpecificSleep}
@@ -384,7 +404,19 @@ Every family's sleep journey is unique, and with patience and consistency, you'l
 What else can I help with for ${childContext.name}?`
     }
     // Feeding-related questions  
-    else if (queryLower.includes('food') || queryLower.includes('eat') || queryLower.includes('feed') || queryLower.includes('milk') || queryLower.includes('solid') || queryLower.includes('breast') || queryLower.includes('bottle')) {
+    else if (
+      queryLower.includes('food') || 
+      queryLower.includes('eat') || 
+      queryLower.includes('feed') || 
+      queryLower.includes('milk') || 
+      queryLower.includes('solid') || 
+      queryLower.includes('breast') || 
+      queryLower.includes('bottle') ||
+      queryLower.includes('formula') ||
+      queryLower.includes('hunger') ||
+      queryLower.includes('nutrition')
+    ) {
+      console.log('🍼 Detected feeding-related query:', query)
       let feedingGuidance = ''
       
       if (childContext.ageMonths <= 6) {
@@ -409,7 +441,7 @@ What else can I help with for ${childContext.name}?`
 - Avoid choking hazards (whole grapes, nuts, hard candies)`
       }
 
-      response = `${prefixMessage ? prefixMessage + '\n\n' : ''}Feeding questions are so common—you're being such a thoughtful parent to ${childContext.name}! 😊
+      response = `Feeding questions are so common—you're being such a thoughtful parent to ${childContext.name}! 😊
 
 ${feedingGuidance}
 
@@ -420,7 +452,24 @@ Always check with your pediatrician about ${childContext.name}'s specific nutrit
 What else can I help with for ${childContext.name}?`
     }
     // Development and milestone questions
-    else if (queryLower.includes('develop') || queryLower.includes('milestone') || queryLower.includes('crawl') || queryLower.includes('walk') || queryLower.includes('talk') || queryLower.includes('roll') || queryLower.includes('sit')) {
+    else if (
+      queryLower.includes('develop') || 
+      queryLower.includes('milestone') || 
+      queryLower.includes('crawl') || 
+      queryLower.includes('walk') || 
+      queryLower.includes('talk') || 
+      queryLower.includes('roll') || 
+      queryLower.includes('sit') ||
+      queryLower.includes('growth') ||
+      queryLower.includes('skills') ||
+      queryLower.includes('abilities') ||
+      queryLower.includes('play') ||
+      queryLower.includes('activities') ||
+      queryLower.includes('toys') ||
+      queryLower.includes('games') ||
+      queryLower.includes('stimulation')
+    ) {
+      console.log('👶 Detected development-related query:', query)
       let developmentGuidance = ''
       
       if (childContext.ageMonths <= 3) {
@@ -429,14 +478,28 @@ What else can I help with for ${childContext.name}?`
 - Following objects with eyes
 - Holding head up during tummy time
 - Making cooing sounds
-- Starting to reach for objects`
+- Starting to reach for objects
+
+**Great activities for ${childContext.name}:**
+- Tummy time (3-5 minutes, several times daily)
+- High-contrast black & white pictures
+- Gentle talking and singing
+- Rattles and soft toys for grasping practice
+- Face-to-face interaction and peek-a-boo`
       } else if (childContext.ageMonths <= 6) {
         developmentGuidance = `**Development for ${childContext.name} at ${childContext.ageDisplay}:**
 - Rolling over (both ways)
 - Sitting with support, working toward independent sitting
 - Reaching and grasping toys
 - Babbling sounds
-- Showing interest in solid foods`
+- Showing interest in solid foods
+
+**Perfect activities for ${childContext.name}:**
+- Colorful toys they can grasp and mouth
+- Baby-safe mirrors for self-discovery
+- Cause-and-effect toys (rattles, crinkly books)
+- Supported sitting with pillows
+- Different textures to explore safely`
       } else if (childContext.ageMonths <= 12) {
         developmentGuidance = `**Development for ${childContext.name} at ${childContext.ageDisplay}:**
 - Sitting independently
@@ -444,17 +507,33 @@ What else can I help with for ${childContext.name}?`
 - Pulling to stand
 - First words may appear
 - Responding to their name
-- Playing peek-a-boo and pat-a-cake`
+- Playing peek-a-boo and pat-a-cake
+
+**Engaging activities for ${childContext.name}:**
+- Stacking cups and soft blocks
+- Push-and-pull toys for cruising
+- Simple cause-and-effect toys (pop-up toys)
+- Board books with simple pictures
+- Music and dancing together
+- Hide-and-seek games`
       } else {
         developmentGuidance = `**Development for ${childContext.name} at ${childContext.ageDisplay}:**
 - Walking independently or with support
 - Vocabulary growth (10+ words by 18 months)
 - Following simple instructions
 - Showing independence and preferences
-- Climbing and exploring actively`
+- Climbing and exploring actively
+
+**Fun activities for ${childContext.name}:**
+- Shape sorters and simple puzzles
+- Crayons and large paper for scribbling
+- Playground visits (slides, swings, climbing)
+- Pretend play with dolls or stuffed animals
+- Simple songs with actions
+- Building with blocks or Duplo`
       }
 
-      response = `${prefixMessage ? prefixMessage + '\n\n' : ''}Development questions show how much you care about ${childContext.name}—that's wonderful! 😊
+      response = `Development questions show how much you care about ${childContext.name}—that's wonderful! 😊
 
 ${developmentGuidance}
 
@@ -472,8 +551,19 @@ Contact your pediatrician if you have specific concerns about ${childContext.nam
 What else can I help with for ${childContext.name}?`
     }
     // Health and safety questions
-    else if (queryLower.includes('health') || queryLower.includes('sick') || queryLower.includes('temperature') || queryLower.includes('rash') || queryLower.includes('cough') || queryLower.includes('safety')) {
-      response = `${prefixMessage ? prefixMessage + '\n\n' : ''}I see you're concerned about ${childContext.name}'s health—that shows what a caring parent you are! 😊
+    else if (
+      queryLower.includes('health') || 
+      queryLower.includes('sick') || 
+      queryLower.includes('temperature') || 
+      queryLower.includes('rash') || 
+      queryLower.includes('cough') || 
+      queryLower.includes('safety') ||
+      queryLower.includes('doctor') ||
+      queryLower.includes('pediatrician') ||
+      queryLower.includes('symptoms')
+    ) {
+      console.log('🏥 Detected health-related query:', query)
+      response = `I see you're concerned about ${childContext.name}'s health—that shows what a caring parent you are! 😊
 
 **General health guidance for ${childContext.name} at ${childContext.ageDisplay}:**
 - Normal temperature: 98.6°F (100.4°F+ is fever, contact pediatrician)
@@ -496,7 +586,8 @@ What else can I help with for ${childContext.name}?`
     }
     // General/catch-all response
     else {
-      response = `${prefixMessage ? prefixMessage + '\n\n' : ''}Hi! I'm MilestoneBot, your parenting sidekick! I'm here to help with ${childContext.name}'s care and development. 😊
+      console.log('❓ Using general response for query:', query)
+      response = `Hi! I'm MilestoneBot, your parenting sidekick! I'm here to help with ${childContext.name}'s care and development. 😊
 
 **I can provide guidance on:**
 - Sleep routines and challenges
@@ -521,7 +612,7 @@ What else can I help with for ${childContext.name}?`
       content: response,
       responseType: 'local',
       confidenceScore: 0.85,
-      emergencyDetected: hasEmergencyKeyword,
+      emergencyDetected: isEmergency,
       safetyFlags: { source: 'enhanced_fallback', category: 'comprehensive_guidance' },
       processingTimeMs: Date.now() - startTime,
       childContextUsed: this.compressChildContext(childContext)
