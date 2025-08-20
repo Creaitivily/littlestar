@@ -114,11 +114,11 @@ export function SignupForm() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Link to="/landing" className="flex justify-center mb-4">
-            <Star className="w-12 h-12 text-lavender-500 hover:text-lavender-600 transition-colors" />
+            <img src="/logo.png" alt="MilestoneBee" className="w-12 h-12 hover:scale-105 transition-transform" />
           </Link>
           <CardTitle className="text-2xl font-bold text-gray-800">Create Account</CardTitle>
           <CardDescription>
-            Start tracking your little star's journey today
+            Start tracking your child's milestones today
           </CardDescription>
         </CardHeader>
         

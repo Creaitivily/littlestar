@@ -1,7 +1,7 @@
 {
-  "name": "little-star-tracker",
+  "name": "milestonebee-tracker",
   "version": "1.0.0",
-  "description": "A minimalist daughter data tracking application",
+  "description": "A minimalist child development tracking application with MilestoneBee",
   "type": "module",
   "scripts": {
     "dev": "vite",

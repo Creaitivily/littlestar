@@ -150,9 +150,9 @@ export function Dashboard() {
               {hasChildren ? 
                 (selectedChild ? 
                   `Here's what's happening with ${selectedChild.name} today` :
-                  `Managing ${children.length} little stars`
+                  `Managing ${children.length} precious milestones`
                 ) : 
-                'Ready to start tracking your little star?'
+                'Ready to start tracking your child\'s milestones?'
               }
             </p>
           </div>

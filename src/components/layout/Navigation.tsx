@@ -59,10 +59,10 @@ export function Navigation() {
   }
 
   return (
-    <nav className="w-64 bg-white border-r border-lavender-200 min-h-screen p-6 flex flex-col">
+    <nav className="w-64 bg-white border-r border-sage-200 min-h-screen p-6 flex flex-col">
       <div className="flex items-center gap-2 mb-8">
-        <Star className="w-8 h-8 text-lavender-500" />
-        <h1 className="text-xl font-bold text-gray-800">Little Star</h1>
+        <img src="/logo.png" alt="MilestoneBee" className="w-8 h-8" />
+        <h1 className="text-xl font-bold text-sage-700">MilestoneBee</h1>
       </div>
       
       <ul className="space-y-2 flex-1">
@@ -77,8 +77,8 @@ export function Navigation() {
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
                   isActive 
-                    ? "bg-lavender-100 text-lavender-700 border border-lavender-300" 
-                    : "text-gray-600 hover:bg-lavender-50 hover:text-lavender-600"
+                    ? "bg-sage-100 text-sage-700 border border-sage-300" 
+                    : "text-gray-600 hover:bg-honey-50 hover:text-sage-600"
                 )}
               >
                 <Icon className="w-5 h-5" />
@@ -92,7 +92,7 @@ export function Navigation() {
         <li>
           <button
             onClick={() => setShowAddChild(true)}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-lavender-600 hover:bg-lavender-50 hover:text-lavender-700 border-2 border-dashed border-lavender-300 hover:border-lavender-400 w-full"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sage-600 hover:bg-honey-50 hover:text-sage-700 border-2 border-dashed border-sage-300 hover:border-sage-400 w-full"
           >
             <Plus className="w-5 h-5" />
             <span className="font-medium">Add Child</span>
@@ -101,7 +101,7 @@ export function Navigation() {
       </ul>
 
       {/* User section */}
-      <div className="mt-auto pt-6 border-t border-lavender-200">
+      <div className="mt-auto pt-6 border-t border-sage-200">
         <div className="flex items-center gap-3 px-4 py-3 mb-2">
           <User className="w-5 h-5 text-gray-500" />
           <span className="text-sm text-gray-600 truncate">

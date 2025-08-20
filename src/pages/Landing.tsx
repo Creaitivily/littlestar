@@ -32,8 +32,8 @@ export function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
-              <Star className="w-8 h-8 text-lavender-500" />
-              <span className="text-xl font-bold text-gray-800">Little Star</span>
+              <img src="/logo.png" alt="MilestoneBee" className="w-8 h-8" />
+              <span className="text-xl font-bold text-sage-700">MilestoneBee</span>
             </div>
             <div className="flex items-center gap-4">
               <Button variant="ghost" onClick={() => navigate('/login')}>
@@ -54,7 +54,7 @@ export function Landing() {
             <Star className="w-20 h-20 text-lavender-400 mx-auto mb-6 animate-pulse" />
           </div>
           <h1 className="text-5xl md:text-6xl font-bold text-gray-800 mb-6">
-            Track Your Little Star's
+            Track Your Child's
             <span className="block text-lavender-600">Beautiful Journey</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
@@ -91,7 +91,7 @@ export function Landing() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-800 mb-4">
-              Everything You Need to Track Your Little Star
+              Everything You Need to Track Your Child's Milestones
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Beautifully organized tools to capture every precious moment and milestone
@@ -158,7 +158,7 @@ export function Landing() {
             Your Family's Privacy is Our Priority
           </h2>
           <p className="text-lg text-gray-600 mb-8">
-            We understand how precious your daughter's data is. That's why we built Little Star 
+            We understand how precious your child's data is. That's why we built MilestoneBee 
             with enterprise-grade security and privacy protection.
           </p>
           <div className="grid md:grid-cols-3 gap-6">
@@ -186,9 +186,9 @@ export function Landing() {
           </h2>
           <Accordion type="single" collapsible>
             <AccordionItem value="item-1">
-              <AccordionTrigger>Is Little Star really free?</AccordionTrigger>
+              <AccordionTrigger>Is MilestoneBee really free?</AccordionTrigger>
               <AccordionContent>
-                Yes! Little Star is completely free for basic tracking features. We believe every parent 
+                Yes! MilestoneBee is completely free for basic tracking features. We believe every parent 
                 should have access to beautiful tools to track their child's journey.
               </AccordionContent>
             </AccordionItem>
@@ -209,8 +209,8 @@ export function Landing() {
             <AccordionItem value="item-4">
               <AccordionTrigger>Does it work on mobile devices?</AccordionTrigger>
               <AccordionContent>
-                Yes! Little Star is fully responsive and works beautifully on phones, tablets, and desktops. 
-                Track your little star's journey from anywhere.
+                Yes! MilestoneBee is fully responsive and works beautifully on phones, tablets, and desktops. 
+                Track your child's milestones from anywhere.
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -222,10 +222,10 @@ export function Landing() {
         <div className="max-w-4xl mx-auto text-center">
           <Star className="w-16 h-16 text-lavender-500 mx-auto mb-6" />
           <h2 className="text-4xl font-bold text-gray-800 mb-4">
-            Start Your Little Star's Journey Today
+            Start Your Child's Milestone Journey Today
           </h2>
           <p className="text-xl text-gray-600 mb-8">
-            Join thousands of parents who trust Little Star to organize and cherish 
+            Join thousands of parents who trust MilestoneBee to organize and cherish 
             their daughter's most precious moments.
           </p>
           <Button 
@@ -246,10 +246,10 @@ export function Landing() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Star className="w-6 h-6 text-lavender-400" />
-                <span className="text-lg font-bold">Little Star</span>
+                <span className="text-lg font-bold">MilestoneBee</span>
               </div>
               <p className="text-gray-400">
-                Track your little star's beautiful journey with love and care.
+                Track your child's milestones, one buzz at a time 🐝
               </p>
             </div>
             <div>
@@ -289,7 +289,7 @@ export function Landing() {
                 <div>
                   <h4 className="font-semibold text-amber-400 mb-2">Important Medical Disclaimer</h4>
                   <p className="text-gray-300 text-sm leading-relaxed">
-                    Little Star's AI Health Assistant provides educational information only and is not a substitute for professional medical advice, diagnosis, or treatment. 
+                    MilestoneBee's AI Health Assistant provides educational information only and is not a substitute for professional medical advice, diagnosis, or treatment. 
                     Always consult your pediatrician or qualified healthcare provider for personalized medical guidance regarding your child's health. 
                     For medical emergencies, call 911 immediately. This service cannot replace professional medical care.
                   </p>
@@ -298,7 +298,7 @@ export function Landing() {
             </div>
             
             <div className="text-center text-gray-400">
-              <p>&copy; 2024 Little Star. Made with ❤️ for families everywhere.</p>
+              <p>&copy; 2024 MilestoneBee. Made with 🐝 for families everywhere.</p>
               <div className="mt-2">
                 <Link to="/admin" className="text-xs text-gray-500 hover:text-gray-400 underline">
                   Admin Access
