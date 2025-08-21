@@ -91,6 +91,19 @@ const DialogClose = React.forwardRef<
 ))
 DialogClose.displayName = "DialogClose"
 
+// DialogTrigger component for compatibility
+const DialogTrigger = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ className, ...props }, ref) => (
+  <button
+    ref={ref}
+    className={cn("inline-flex items-center justify-center", className)}
+    {...props}
+  />
+))
+DialogTrigger.displayName = "DialogTrigger"
+
 export {
   Dialog,
   DialogContent,
@@ -98,4 +111,5 @@ export {
   DialogTitle,
   DialogDescription,
   DialogClose,
+  DialogTrigger,
 }
