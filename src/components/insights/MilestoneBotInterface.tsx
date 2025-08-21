@@ -24,6 +24,7 @@ interface Message {
   context?: {
     childAge?: string
     topic?: string
+    userCountry?: string
   }
 }
 
