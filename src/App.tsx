@@ -4,6 +4,8 @@ import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ChildProvider } from './contexts/ChildContext'
 import { SidebarProvider } from './components/ui/sidebar'
+// Initialize app services
+import './services/appInitializer'
 import { Layout } from './components/layout/Layout'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { AdminRoute } from './components/auth/AdminRoute'

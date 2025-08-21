@@ -8,14 +8,17 @@ import { FileAttachment } from '@/components/ui/FileAttachment'
 import { GooglePhotosPickerAdvanced } from '@/components/ui/GooglePhotosPickerAdvanced'
 import { uploadAttachmentFile } from '@/lib/storage'
 import { useAuth } from '@/contexts/AuthContext'
+import { useChild } from '@/contexts/ChildContext'
 
 interface AddMemoryFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: any) => void
+  onSuccess?: () => void
 }
 
-export function AddMemoryForm({ open, onOpenChange, onSubmit }: AddMemoryFormProps) {
+export function AddMemoryForm({ open, onOpenChange, onSuccess }: AddMemoryFormProps) {
+  const { selectedChild } = useChild()
+  const { user, createMemory } = useAuth()
   const [formData, setFormData] = useState({
     title: '',
     date: new Date().toISOString().split('T')[0],
@@ -26,45 +29,60 @@ export function AddMemoryForm({ open, onOpenChange, onSubmit }: AddMemoryFormPro
   const [uploading, setUploading] = useState(false)
   const [googlePhotosUrl, setGooglePhotosUrl] = useState<string>('')
   const [googlePhotosUrls, setGooglePhotosUrls] = useState<string[]>([])
-  
-  const { user, children } = useAuth()
-  
-  // Get the first child for now - in a real app, you'd pass the selected child
-  const selectedChild = children[0]
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (formData.title && formData.description) {
-      setUploading(true)
-      
+    
+    if (!selectedChild) {
+      setError('No child selected')
+      return
+    }
+    
+    if (!formData.title.trim() || !formData.description.trim()) {
+      setError('Title and description are required')
+      return
+    }
+
+    setUploading(true)
+    setError(null)
+    
+    try {
       let fileUrl = null
       
       // Upload file if attached
       if (attachedFile && user) {
-        const { fileUrl: uploadedFileUrl, error } = await uploadAttachmentFile(
+        const { fileUrl: uploadedFileUrl, error: uploadError } = await uploadAttachmentFile(
           attachedFile,
           user.id,
           'memory'
         )
         
-        if (error) {
-          console.error('File upload error:', error)
+        if (uploadError) {
+          console.error('File upload error:', uploadError)
+          setError('Failed to upload file. Saving memory without attachment.')
           // Continue without file if upload fails
         } else {
           fileUrl = uploadedFileUrl
         }
       }
       
-      onSubmit({
-        title: formData.title,
+      const { error } = await createMemory(selectedChild.id, {
+        title: formData.title.trim(),
         date: formData.date,
-        description: formData.description,
-        attachmentUrl: fileUrl,
-        googlePhotosUrl: googlePhotosUrl || null,
-        googlePhotosUrls: googlePhotosUrls.length > 0 ? googlePhotosUrls : null
+        description: formData.description.trim(),
+        attachment_url: fileUrl,
+        google_photos_url: googlePhotosUrl || null,
+        google_photos_urls: googlePhotosUrls.length > 0 ? googlePhotosUrls : null
       })
-      
-      // Reset form
+
+      if (error) {
+        console.error('Error creating memory:', error)
+        setError('Failed to save memory. Please try again.')
+        return
+      }
+
+      // Success - reset form and close dialog
       setFormData({
         title: '',
         date: new Date().toISOString().split('T')[0],
@@ -74,8 +92,14 @@ export function AddMemoryForm({ open, onOpenChange, onSubmit }: AddMemoryFormPro
       setFilePreview(null)
       setGooglePhotosUrl('')
       setGooglePhotosUrls([])
-      setUploading(false)
       onOpenChange(false)
+      onSuccess?.()
+      
+    } catch (error) {
+      console.error('Unexpected error creating memory:', error)
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -88,6 +112,12 @@ export function AddMemoryForm({ open, onOpenChange, onSubmit }: AddMemoryFormPro
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
+              {error}
+            </div>
+          )}
+          
           <div className="space-y-2">
             <Label htmlFor="title">Memory Title</Label>
             <Input
@@ -95,6 +125,7 @@ export function AddMemoryForm({ open, onOpenChange, onSubmit }: AddMemoryFormPro
               placeholder="First day of school, beach vacation, etc."
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              disabled={uploading}
               required
             />
           </div>
@@ -106,6 +137,7 @@ export function AddMemoryForm({ open, onOpenChange, onSubmit }: AddMemoryFormPro
               type="date"
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              disabled={uploading}
               required
             />
           </div>
@@ -117,6 +149,7 @@ export function AddMemoryForm({ open, onOpenChange, onSubmit }: AddMemoryFormPro
               placeholder="Tell the story of this special moment..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              disabled={uploading}
               required
               rows={4}
             />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,27 +13,58 @@ import {
   Clock,
   Baby
 } from 'lucide-react'
-import { activities } from '@/data/mockData'
 import { formatDate, getMoodEmoji, getCategoryIcon, calculateAgeInMonths } from '@/lib/utils'
 import { AddActivityForm } from '@/components/forms/AddActivityForm'
 import { useChild } from '@/contexts/ChildContext'
+import { useAuth } from '@/contexts/AuthContext'
 
 export function Activities() {
   const [showActivityForm, setShowActivityForm] = useState(false)
+  const [activities, setActivities] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const { selectedChild } = useChild()
+  const { fetchChildActivities } = useAuth()
   
   // Calculate child's age in months to determine appropriate activities
   const ageInMonths = selectedChild ? calculateAgeInMonths(selectedChild.birth_date) : 12
   const isInfant = ageInMonths <= 6 // 0-6 months
   
+  // Fetch activities when selected child changes
+  useEffect(() => {
+    const loadActivities = async () => {
+      if (selectedChild?.id) {
+        setLoading(true)
+        try {
+          const data = await fetchChildActivities(selectedChild.id)
+          setActivities(data)
+        } catch (error) {
+          console.error('Error loading activities:', error)
+        } finally {
+          setLoading(false)
+        }
+      } else {
+        setActivities([])
+        setLoading(false)
+      }
+    }
+
+    loadActivities()
+  }, [selectedChild, fetchChildActivities])
+
+  const refreshActivities = async () => {
+    if (selectedChild?.id) {
+      try {
+        const data = await fetchChildActivities(selectedChild.id)
+        setActivities(data)
+      } catch (error) {
+        console.error('Error refreshing activities:', error)
+      }
+    }
+  }
+  
   const todayActivities = activities.filter(activity => 
     activity.date === new Date().toISOString().split('T')[0]
   )
-
-  const handleAddActivity = (data: any) => {
-    console.log('New activity:', data)
-    // In a real app, this would update the database
-  }
 
   const activityStats = activities.reduce((acc, activity) => {
     const type = activity.type
@@ -191,29 +222,51 @@ export function Activities() {
             <CardTitle className="text-lg font-semibold text-gray-800">Recent Activities</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {activities.slice(0, 6).map((activity) => (
-                <div key={activity.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <span className="text-2xl">{getMoodEmoji(activity.mood)}</span>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium text-gray-800">{activity.title}</h4>
-                      <Badge variant="outline" className="text-xs">
-                        {activity.type}
-                      </Badge>
+            {loading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg animate-pulse">
+                    <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                     </div>
-                    <p className="text-sm text-gray-600">{activity.description}</p>
-                    <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
-                      <span>{formatDate(activity.date)}</span>
-                      {activity.duration && <span>{activity.duration} min</span>}
-                      <div className="flex items-center">
-                        {'⭐'.repeat(activity.rating)}
+                  </div>
+                ))}
+              </div>
+            ) : activities.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Baby className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No activities logged yet.</p>
+                <p className="text-sm">Start by adding your first activity!</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {activities.slice(0, 6).map((activity) => (
+                  <div key={activity.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <span className="text-2xl">{getMoodEmoji(activity.mood || 'neutral')}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-medium text-gray-800">{activity.title || activity.type}</h4>
+                        <Badge variant="outline" className="text-xs">
+                          {activity.type}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600">{activity.description}</p>
+                      <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                        <span>{formatDate(activity.date)}</span>
+                        {activity.duration && <span>{activity.duration} min</span>}
+                        {activity.rating && (
+                          <div className="flex items-center">
+                            {'⭐'.repeat(activity.rating)}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -243,7 +296,7 @@ export function Activities() {
       <AddActivityForm 
         open={showActivityForm} 
         onOpenChange={setShowActivityForm}
-        onSubmit={handleAddActivity}
+        onSuccess={refreshActivities}
       />
     </div>
   )

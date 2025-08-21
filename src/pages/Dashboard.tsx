@@ -11,7 +11,6 @@ import {
   Camera,
   Plus
 } from 'lucide-react'
-import { daughterProfile, dashboardStats, activities, healthRecords } from '@/data/mockData'
 import { formatDate, getMoodEmoji } from '@/lib/utils'
 import { AddActivityForm } from '@/components/forms/AddActivityForm'
 import { AddGrowthForm } from '@/components/forms/AddGrowthForm'
@@ -33,10 +32,17 @@ export function Dashboard() {
   const { hasChildren, children, createChild, fetchChildren, user, fetchChildActivities, fetchChildGrowthRecords, fetchChildHealthRecords, loading } = useAuth()
   const { selectedChild } = useChild()
   
-  // Use child-specific data or fall back to mock data
-  const recentActivities = childActivities.slice(0, 3).length > 0 ? childActivities.slice(0, 3) : activities.slice(0, 3)
+  // Use child-specific data
+  const recentActivities = childActivities.slice(0, 3)
   const upcomingAppointments = childHealthRecords.filter(record => record.date > new Date().toISOString()).slice(0, 2)
   const latestGrowth = childGrowthRecords[0] // Most recent growth record
+  const lastSleepActivity = childActivities.find(activity => activity.type === 'sleep')
+  const todaysActivities = childActivities.filter(activity => 
+    activity.date === new Date().toISOString().split('T')[0]
+  )
+  const todaysMeals = todaysActivities.filter(activity => 
+    activity.type === 'meal' || activity.type === 'feeding'
+  ).length
 
   // Reset initial check when user changes
   useEffect(() => {
@@ -103,19 +109,24 @@ export function Dashboard() {
     }
   }, [selectedChild, fetchChildActivities, fetchChildGrowthRecords, fetchChildHealthRecords])
 
-  const handleAddActivity = (data: any) => {
-    console.log('New activity:', data)
-    // In a real app, this would update the database
-  }
-
-  const handleAddGrowth = (data: any) => {
-    console.log('New growth measurement:', data)
-    // In a real app, this would update the database
-  }
-
-  const handleAddMemory = (data: any) => {
-    console.log('New memory:', data)
-    // In a real app, this would update the database
+  const refreshChildData = async () => {
+    if (selectedChild?.id) {
+      try {
+        const [activities, growthRecords, healthRecords] = await Promise.all([
+          fetchChildActivities(selectedChild.id),
+          fetchChildGrowthRecords(selectedChild.id),
+          fetchChildHealthRecords(selectedChild.id)
+        ])
+        
+        setChildActivities(activities)
+        setChildGrowthRecords(growthRecords)
+        setChildHealthRecords(healthRecords)
+        
+        console.log('Child data refreshed after form submission')
+      } catch (error) {
+        console.error('Error refreshing child data:', error)
+      }
+    }
   }
 
   const handleChildOnboardingComplete = async (childData: { name: string; birthDate: string; birthTime: string; profileImageUrl?: string | null }) => {
@@ -144,8 +155,8 @@ export function Dashboard() {
     }
   }
 
-  // Get the selected child for display, or fall back to mock data for empty state
-  const currentChild = selectedChild || daughterProfile
+  // Get the selected child for display
+  const currentChild = selectedChild
   
 
   return (
@@ -179,12 +190,12 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-800">
-              {latestGrowth?.height ? `${latestGrowth.height} cm` : `${dashboardStats.currentHeight} cm`}
+              {latestGrowth?.height ? `${latestGrowth.height} cm` : 'No data'}
             </div>
             <p className="text-xs text-gray-600 mt-1">
               {latestGrowth?.measurement_date ? 
                 `Recorded ${new Date(latestGrowth.measurement_date).toLocaleDateString()}` : 
-                '75th percentile'
+                'Add a growth measurement to see data'
               }
             </p>
           </CardContent>
@@ -197,12 +208,12 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-800">
-              {latestGrowth?.weight ? `${latestGrowth.weight} kg` : `${dashboardStats.currentWeight} kg`}
+              {latestGrowth?.weight ? `${latestGrowth.weight} kg` : 'No data'}
             </div>
             <p className="text-xs text-gray-600 mt-1">
               {latestGrowth?.measurement_date ? 
                 `Recorded ${new Date(latestGrowth.measurement_date).toLocaleDateString()}` : 
-                '72nd percentile'
+                'Add a growth measurement to see data'
               }
             </p>
           </CardContent>
@@ -214,8 +225,15 @@ export function Dashboard() {
             <Moon className="h-4 w-4 text-pink-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-800">{dashboardStats.sleepLastNight} hours</div>
-            <p className="text-xs text-gray-600 mt-1">Great sleep! 😴</p>
+            <div className="text-2xl font-bold text-gray-800">
+              {lastSleepActivity ? lastSleepActivity.description : 'No sleep data'}
+            </div>
+            <p className="text-xs text-gray-600 mt-1">
+              {lastSleepActivity ? 
+                `Last recorded ${new Date(lastSleepActivity.date).toLocaleDateString()}` : 
+                'Add a sleep activity to see data'
+              }
+            </p>
           </CardContent>
         </Card>
 
@@ -225,8 +243,10 @@ export function Dashboard() {
             <Utensils className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-800">{dashboardStats.mealsToday}/3</div>
-            <p className="text-xs text-gray-600 mt-1">Dinner time soon!</p>
+            <div className="text-2xl font-bold text-gray-800">{todaysMeals}</div>
+            <p className="text-xs text-gray-600 mt-1">
+              {todaysMeals === 0 ? 'No meals logged today' : `${todaysMeals} meal${todaysMeals === 1 ? '' : 's'} today`}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -344,17 +364,17 @@ export function Dashboard() {
       <AddActivityForm 
         open={showActivityForm} 
         onOpenChange={setShowActivityForm}
-        onSubmit={handleAddActivity}
+        onSuccess={refreshChildData}
       />
       <AddGrowthForm 
         open={showGrowthForm} 
         onOpenChange={setShowGrowthForm}
-        onSubmit={handleAddGrowth}
+        onSuccess={refreshChildData}
       />
       <AddMemoryForm 
         open={showMemoryForm} 
         onOpenChange={setShowMemoryForm}
-        onSubmit={handleAddMemory}
+        onSuccess={refreshChildData}
       />
 
       {/* Child Onboarding Modal (First-time users only) */}

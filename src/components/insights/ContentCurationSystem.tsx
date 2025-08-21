@@ -21,29 +21,15 @@ import {
   Activity,
   Brain,
   Stethoscope,
-  Users
+  Users,
+  Baby,
+  MessageSquare,
+  Shield
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { contentService, calculateChildAgeInMonths, type TopicContent } from '@/services/contentService'
 
-interface ContentItem {
-  id: string
-  title: string
-  description: string
-  contentType: 'video' | 'article' | 'webpage' | 'pdf'
-  sourceUrl: string
-  thumbnailUrl?: string
-  categories: string[]
-  tags: string[]
-  sourceName: string
-  author?: string
-  publishedDate?: string
-  readingTimeMinutes?: number
-  qualityScore: number
-  isVerified: boolean
-  ageGroup?: string
-  isSaved?: boolean
-  isFavorite?: boolean
-}
+// Use TopicContent from contentService instead of custom ContentItem
 
 interface ContentCategory {
   id: string
@@ -56,68 +42,76 @@ interface ContentCategory {
 
 const contentCategories: ContentCategory[] = [
   {
-    id: 'development',
-    name: 'Development',
-    icon: TrendingUp,
-    description: 'Milestones, growth, and developmental stages',
-    color: 'sage',
-    subcategories: ['motor skills', 'cognitive', 'social', 'language', 'milestones']
-  },
-  {
-    id: 'feeding',
+    id: 'feeding_nutrition',
     name: 'Feeding & Nutrition',
     icon: Utensils,
-    description: 'Breastfeeding, formula, and solid food introduction',
+    description: 'Feeding schedules, nutrition, and meal planning',
     color: 'honey',
     subcategories: ['breastfeeding', 'formula', 'solid foods', 'nutrition', 'weaning']
   },
   {
-    id: 'sleep',
-    name: 'Sleep',
+    id: 'sleep_patterns',
+    name: 'Sleep & Rest',
     icon: Moon,
-    description: 'Sleep training, routines, and safe sleep practices',
+    description: 'Sleep training, schedules, and bedtime routines',
     color: 'mint',
     subcategories: ['sleep training', 'bedtime routine', 'safe sleep', 'naps', 'sleep regression']
   },
   {
-    id: 'health',
+    id: 'cognitive_development',
+    name: 'Learning & Development',
+    icon: Brain,
+    description: 'Cognitive milestones and mental development',
+    color: 'sage',
+    subcategories: ['learning', 'brain development', 'milestones', 'early education']
+  },
+  {
+    id: 'physical_development',
+    name: 'Motor Skills',
+    icon: Activity,
+    description: 'Physical milestones and motor skill development',
+    color: 'peach',
+    subcategories: ['gross motor', 'fine motor', 'crawling', 'walking', 'coordination']
+  },
+  {
+    id: 'social_emotional',
+    name: 'Emotions & Social',
+    icon: Heart,
+    description: 'Emotional development and social skills',
+    color: 'sage',
+    subcategories: ['bonding', 'attachment', 'emotions', 'social skills']
+  },
+  {
+    id: 'health_safety',
     name: 'Health & Safety',
-    icon: Stethoscope,
-    description: 'Medical care, vaccinations, and safety guidelines',
+    icon: Shield,
+    description: 'Medical care, safety, and health monitoring',
     color: 'peach',
     subcategories: ['vaccinations', 'illness', 'safety', 'first aid', 'checkups']
   },
   {
-    id: 'activities',
+    id: 'activities_play',
     name: 'Activities & Play',
-    icon: Activity,
-    description: 'Age-appropriate activities and educational play',
-    color: 'sage',
-    subcategories: ['sensory play', 'educational toys', 'outdoor activities', 'crafts', 'reading']
-  },
-  {
-    id: 'behavior',
-    name: 'Behavior & Discipline',
-    icon: Brain,
-    description: 'Positive discipline and behavioral guidance',
+    icon: Baby,
+    description: 'Age-appropriate activities and play ideas',
     color: 'honey',
-    subcategories: ['positive discipline', 'tantrums', 'boundaries', 'emotional regulation']
+    subcategories: ['sensory play', 'toys', 'activities', 'tummy time', 'reading']
   },
   {
-    id: 'mental-health',
-    name: 'Mental Health',
-    icon: Heart,
-    description: 'Parental wellbeing and family mental health',
-    color: 'peach',
-    subcategories: ['postpartum', 'anxiety', 'stress management', 'bonding', 'support']
-  },
-  {
-    id: 'family',
-    name: 'Family Life',
-    icon: Users,
-    description: 'Parenting tips, family dynamics, and relationships',
+    id: 'behavior_discipline',
+    name: 'Behavior & Discipline',
+    icon: MessageSquare,
+    description: 'Behavior management and positive discipline',
     color: 'mint',
-    subcategories: ['sibling relationships', 'work-life balance', 'parenting styles', 'communication']
+    subcategories: ['discipline', 'tantrums', 'boundaries', 'behavior patterns']
+  },
+  {
+    id: 'language_communication',
+    name: 'Speech & Language',
+    icon: Users,
+    description: 'Language development and communication skills',
+    color: 'sage',
+    subcategories: ['speech', 'language', 'babbling', 'communication', 'vocabulary']
   }
 ]
 
@@ -127,82 +121,59 @@ interface ContentCurationSystemProps {
 }
 
 export function ContentCurationSystem({ selectedChild, className }: ContentCurationSystemProps) {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['development'])
-  const [contentItems, setContentItems] = useState<ContentItem[]>([])
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['feeding_nutrition'])
+  const [contentItems, setContentItems] = useState<TopicContent[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeFilter, setActiveFilter] = useState<'all' | 'saved' | 'favorites'>('all')
+  const [activeFilter, setActiveFilter] = useState<'all' | 'quality'>('all')
+  const [childAgeInMonths, setChildAgeInMonths] = useState<number>(0)
 
   useEffect(() => {
-    loadContent()
-  }, [selectedCategories, selectedChild])
+    if (selectedChild?.birth_date) {
+      const age = calculateChildAgeInMonths(selectedChild.birth_date)
+      setChildAgeInMonths(age)
+    }
+  }, [selectedChild])
+
+  useEffect(() => {
+    if (selectedCategories.length > 0 && childAgeInMonths >= 0) {
+      loadContent()
+    }
+  }, [selectedCategories, childAgeInMonths])
 
   const loadContent = async () => {
+    if (!selectedCategories.length || childAgeInMonths < 0) return
+    
     setLoading(true)
     try {
-      // TODO: Replace with actual API call
-      const mockContent: ContentItem[] = [
-        {
-          id: '1',
-          title: 'Understanding Newborn Sleep Patterns',
-          description: 'Expert guidance on establishing healthy sleep routines for newborns and understanding their natural sleep cycles.',
-          contentType: 'article',
-          sourceUrl: 'https://healthychildren.org/sleep-guide',
-          categories: ['sleep', 'newborn'],
-          tags: ['sleep training', 'safe sleep', 'SIDS prevention'],
-          sourceName: 'American Academy of Pediatrics',
-          author: 'Dr. Sarah Johnson',
-          readingTimeMinutes: 8,
-          qualityScore: 95,
-          isVerified: true,
-          ageGroup: 'newborn',
-          isSaved: false,
-          isFavorite: false
-        },
-        {
-          id: '2',
-          title: 'Baby Development Milestones: 0-6 Months',
-          description: 'A comprehensive video guide covering what to expect in your baby\'s first six months of development.',
-          contentType: 'video',
-          sourceUrl: 'https://youtube.com/watch?v=example',
-          thumbnailUrl: '/api/placeholder/300/200',
-          categories: ['development', 'milestones'],
-          tags: ['motor skills', 'cognitive development', 'social development'],
-          sourceName: 'Zero to Three',
-          readingTimeMinutes: 15,
-          qualityScore: 92,
-          isVerified: true,
-          ageGroup: '0-6months',
-          isSaved: true,
-          isFavorite: false
-        },
-        {
-          id: '3',
-          title: 'Breastfeeding Basics: Getting Started',
-          description: 'Complete guide to successful breastfeeding for new mothers, including common challenges and solutions.',
-          contentType: 'article',
-          sourceUrl: 'https://cdc.gov/breastfeeding',
-          categories: ['feeding', 'newborn'],
-          tags: ['breastfeeding', 'latch', 'milk supply'],
-          sourceName: 'CDC',
-          author: 'Lactation Consultant Team',
-          readingTimeMinutes: 12,
-          qualityScore: 98,
-          isVerified: true,
-          ageGroup: 'newborn',
-          isSaved: false,
-          isFavorite: true
+      const allContent: TopicContent[] = []
+      
+      // Load content for each selected topic
+      for (const topic of selectedCategories) {
+        try {
+          const topicContent = await contentService.getContentForChild(
+            topic,
+            childAgeInMonths,
+            { minQuality: 0.4 }
+          )
+          allContent.push(...topicContent.map(item => ({ ...item, topic })))
+        } catch (error) {
+          console.error(`Failed to load content for ${topic}:`, error)
         }
-      ]
+      }
+      
+      // Sort by quality score and publication date
+      allContent.sort((a, b) => {
+        if (b.quality_score !== a.quality_score) {
+          return b.quality_score - a.quality_score
+        }
+        return new Date(b.publication_date).getTime() - new Date(a.publication_date).getTime()
+      })
 
-      // Filter by selected categories
-      const filtered = mockContent.filter(item =>
-        item.categories.some(cat => selectedCategories.includes(cat))
-      )
-
-      setContentItems(filtered)
+      setContentItems(allContent)
     } catch (error) {
       console.error('Error loading content:', error)
+      setContentItems([])
     } finally {
       setLoading(false)
     }
@@ -216,26 +187,8 @@ export function ContentCurationSystem({ selectedChild, className }: ContentCurat
     )
   }
 
-  const toggleSaved = (contentId: string) => {
-    setContentItems(prev => prev.map(item =>
-      item.id === contentId ? { ...item, isSaved: !item.isSaved } : item
-    ))
-  }
-
-  const toggleFavorite = (contentId: string) => {
-    setContentItems(prev => prev.map(item =>
-      item.id === contentId ? { ...item, isFavorite: !item.isFavorite } : item
-    ))
-  }
-
-  const getContentIcon = (type: string) => {
-    switch (type) {
-      case 'video': return Video
-      case 'article': return FileText
-      case 'webpage': return Globe
-      case 'pdf': return BookOpen
-      default: return FileText
-    }
+  const getContentIcon = () => {
+    return FileText // All content is articles for now
   }
 
   const getColorClasses = (color: string) => {
@@ -250,11 +203,10 @@ export function ContentCurationSystem({ selectedChild, className }: ContentCurat
 
   const filteredContent = contentItems.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.description.toLowerCase().includes(searchQuery.toLowerCase())
+                         item.content_summary.toLowerCase().includes(searchQuery.toLowerCase())
     
     const matchesFilter = activeFilter === 'all' ||
-                         (activeFilter === 'saved' && item.isSaved) ||
-                         (activeFilter === 'favorites' && item.isFavorite)
+                         (activeFilter === 'quality' && item.quality_score >= 0.7)
     
     return matchesSearch && matchesFilter
   })
@@ -310,7 +262,7 @@ export function ContentCurationSystem({ selectedChild, className }: ContentCurat
         </div>
         
         <div className="flex gap-2">
-          {(['all', 'saved', 'favorites'] as const).map((filter) => (
+          {(['all', 'quality'] as const).map((filter) => (
             <Button
               key={filter}
               variant={activeFilter === filter ? "default" : "outline"}
@@ -322,17 +274,11 @@ export function ContentCurationSystem({ selectedChild, className }: ContentCurat
                   : "border-sage-300 hover:bg-sage-50"
               )}
             >
-              {filter === 'all' && 'All'}
-              {filter === 'saved' && (
+              {filter === 'all' && 'All Content'}
+              {filter === 'quality' && (
                 <>
-                  <Bookmark className="w-3 h-3 mr-1" />
-                  Saved
-                </>
-              )}
-              {filter === 'favorites' && (
-                <>
-                  <Heart className="w-3 h-3 mr-1" />
-                  Favorites
+                  <Star className="w-3 h-3 mr-1" />
+                  High Quality
                 </>
               )}
             </Button>
@@ -357,46 +303,26 @@ export function ContentCurationSystem({ selectedChild, className }: ContentCurat
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredContent.map((item) => {
-            const ContentIcon = getContentIcon(item.contentType)
+            const ContentIcon = getContentIcon()
+            const topicMetadata = contentService.getTopicMetadata()[item.topic]
             
             return (
               <Card key={item.id} className="group hover:shadow-lg transition-all border-sage-200 hover:border-sage-300">
                 <div className="relative">
-                  {item.thumbnailUrl ? (
-                    <img 
-                      src={item.thumbnailUrl} 
-                      alt={item.title}
-                      className="w-full h-48 object-cover rounded-t-lg"
-                    />
-                  ) : (
-                    <div className="w-full h-48 bg-gradient-to-br from-sage-100 to-honey-100 rounded-t-lg flex items-center justify-center">
-                      <ContentIcon className="w-16 h-16 text-sage-400" />
-                    </div>
-                  )}
+                  <div className="w-full h-48 bg-gradient-to-br from-sage-100 to-honey-100 rounded-t-lg flex items-center justify-center">
+                    <ContentIcon className="w-16 h-16 text-sage-400" />
+                  </div>
                   
-                  <div className="absolute top-3 right-3 flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="bg-white/90 hover:bg-white w-8 h-8 p-0"
-                      onClick={() => toggleSaved(item.id)}
-                    >
-                      <Bookmark className={cn("w-3 h-3", item.isSaved ? "text-sage-600" : "text-gray-400")} />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="bg-white/90 hover:bg-white w-8 h-8 p-0"
-                      onClick={() => toggleFavorite(item.id)}
-                    >
-                      <Heart className={cn("w-3 h-3", item.isFavorite ? "text-red-500" : "text-gray-400")} />
-                    </Button>
+                  <div className="absolute top-3 right-3">
+                    <Badge variant="secondary" className="bg-white/90 text-gray-700">
+                      Quality: {Math.round(item.quality_score * 100)}%
+                    </Badge>
                   </div>
 
                   <div className="absolute bottom-3 left-3">
                     <Badge variant="secondary" className="bg-white/90 text-gray-700">
                       <ContentIcon className="w-3 h-3 mr-1" />
-                      {item.contentType}
+                      Article
                     </Badge>
                   </div>
                 </div>
@@ -406,40 +332,39 @@ export function ContentCurationSystem({ selectedChild, className }: ContentCurat
                     <h3 className="font-semibold text-gray-800 leading-tight group-hover:text-sage-700 transition-colors">
                       {item.title}
                     </h3>
-                    {item.isVerified && (
+                    {item.quality_score >= 0.8 && (
                       <Badge variant="outline" className="ml-2 border-sage-300 text-sage-600">
                         <Star className="w-3 h-3 mr-1" />
-                        Verified
+                        Trusted
                       </Badge>
                     )}
                   </div>
 
-                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description}</p>
+                  <p className="text-gray-600 text-sm mb-3 line-clamp-3">{item.content_summary}</p>
 
                   <div className="flex flex-wrap gap-1 mb-3">
-                    {item.tags.slice(0, 3).map((tag) => (
-                      <Badge key={tag} variant="secondary" className="text-xs bg-gray-100 text-gray-600">
-                        {tag}
-                      </Badge>
-                    ))}
+                    <Badge variant="secondary" className="text-xs bg-sage-100 text-sage-700">
+                      {topicMetadata?.icon} {topicMetadata?.label}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs bg-honey-100 text-honey-700">
+                      {contentService.getAgeRangeLabel(item.age_range)}
+                    </Badge>
                   </div>
 
                   <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
-                    <span className="font-medium">{item.sourceName}</span>
-                    {item.readingTimeMinutes && (
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {item.readingTimeMinutes} min
-                      </div>
-                    )}
+                    <span className="font-medium">{item.source_domain}</span>
+                    <div className="flex items-center gap-1 text-xs">
+                      <Clock className="w-3 h-3" />
+                      {new Date(item.publication_date).toLocaleDateString()}
+                    </div>
                   </div>
 
                   <Button 
                     className="w-full bg-sage-500 hover:bg-sage-600 text-white"
-                    onClick={() => window.open(item.sourceUrl, '_blank')}
+                    onClick={() => window.open(item.url, '_blank')}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    Read More
+                    Read Article
                   </Button>
                 </CardContent>
               </Card>

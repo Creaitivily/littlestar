@@ -16,12 +16,14 @@ import {
   Eye,
   UserCheck,
   Clock,
-  LogOut
+  LogOut,
+  BookOpen
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { supabase } from '@/lib/supabase'
+import { ContentManagement } from '@/components/admin/ContentManagement'
 
 interface AdminStats {
   totalUsers: number
@@ -64,7 +66,7 @@ export function AdminDashboard() {
   const [users, setUsers] = useState<UserData[]>([])
   const [children, setChildren] = useState<ChildData[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'children'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'children' | 'content'>('overview')
 
   const handleLogout = () => {
     localStorage.removeItem('admin_session')
@@ -307,7 +309,8 @@ export function AdminDashboard() {
           {[
             { id: 'overview', label: 'Overview', icon: TrendingUp },
             { id: 'users', label: 'Users', icon: Users },
-            { id: 'children', label: 'Children', icon: Baby }
+            { id: 'children', label: 'Children', icon: Baby },
+            { id: 'content', label: 'Content', icon: BookOpen }
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -617,6 +620,13 @@ export function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        )}
+
+        {/* Content Tab */}
+        {activeTab === 'content' && (
+          <div>
+            <ContentManagement />
           </div>
         )}
       </div>

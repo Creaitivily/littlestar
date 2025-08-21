@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,19 +10,52 @@ import {
   Plus,
   Clock
 } from 'lucide-react'
-import { healthRecords } from '@/data/mockData'
 import { formatDate } from '@/lib/utils'
 import { AddHealthForm } from '@/components/forms/AddHealthForm'
+import { useChild } from '@/contexts/ChildContext'
+import { useAuth } from '@/contexts/AuthContext'
 
 export function Health() {
   const [showHealthForm, setShowHealthForm] = useState(false)
+  const [healthRecords, setHealthRecords] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const { selectedChild } = useChild()
+  const { fetchChildHealthRecords } = useAuth()
+  
+  // Fetch health records when selected child changes
+  useEffect(() => {
+    const loadHealthRecords = async () => {
+      if (selectedChild?.id) {
+        setLoading(true)
+        try {
+          const data = await fetchChildHealthRecords(selectedChild.id)
+          setHealthRecords(data)
+        } catch (error) {
+          console.error('Error loading health records:', error)
+        } finally {
+          setLoading(false)
+        }
+      } else {
+        setHealthRecords([])
+        setLoading(false)
+      }
+    }
+
+    loadHealthRecords()
+  }, [selectedChild, fetchChildHealthRecords])
+
+  const refreshHealthRecords = async () => {
+    if (selectedChild?.id) {
+      try {
+        const data = await fetchChildHealthRecords(selectedChild.id)
+        setHealthRecords(data)
+      } catch (error) {
+        console.error('Error refreshing health records:', error)
+      }
+    }
+  }
   
   const appointments = healthRecords.filter(record => record.type === 'appointment' || record.type === 'checkup')
-
-  const handleAddHealth = (data: any) => {
-    console.log('New health record:', data)
-    // In a real app, this would update the database
-  }
   const vaccinations = healthRecords.filter(record => record.type === 'vaccination')
   const medications = healthRecords.filter(record => record.type === 'medication')
 
@@ -107,7 +140,12 @@ export function Health() {
             <Stethoscope className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold text-gray-800">Mar 2024</div>
+            <div className="text-lg font-bold text-gray-800">
+              {appointments.length > 0 ? 
+                new Date(appointments[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) :
+                'None'
+              }
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -118,38 +156,60 @@ export function Health() {
           <CardTitle className="text-lg font-semibold text-gray-800">All Health Records</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {healthRecords.map((record) => (
-              <div key={record.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start justify-between">
+          {loading ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="border border-gray-200 rounded-lg p-4 animate-pulse">
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-lavender-100 rounded-lg">
-                      {getTypeIcon(record.type)}
-                    </div>
+                    <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium text-gray-800">{record.title}</h3>
-                        <Badge variant={getStatusColor(record.status) as any}>
-                          {record.status}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">{record.description}</p>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span>📅 {formatDate(record.date)}</span>
-                        {record.doctor && <span>👨‍⚕️ {record.doctor}</span>}
-                      </div>
-                      {record.notes && (
-                        <p className="text-sm text-gray-600 mt-2 italic">"{record.notes}"</p>
-                      )}
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm">
-                    View Details
-                  </Button>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : healthRecords.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Stethoscope className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>No health records yet.</p>
+              <p className="text-sm">Start by adding your first health record!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {healthRecords.map((record) => (
+                <div key={record.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-lavender-100 rounded-lg">
+                        {getTypeIcon(record.type)}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium text-gray-800">{record.title || record.type}</h3>
+                          <Badge variant={getStatusColor(record.status || 'completed') as any}>
+                            {record.status || 'completed'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">{record.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>📅 {formatDate(record.date)}</span>
+                          {(record.doctor || record.doctor_name) && <span>👨‍⚕️ {record.doctor || record.doctor_name}</span>}
+                        </div>
+                        {record.notes && (
+                          <p className="text-sm text-gray-600 mt-2 italic">"{record.notes}"</p>
+                        )}
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      View Details
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -195,7 +255,7 @@ export function Health() {
       <AddHealthForm 
         open={showHealthForm} 
         onOpenChange={setShowHealthForm}
-        onSubmit={handleAddHealth}
+        onSuccess={refreshHealthRecords}
       />
     </div>
   )

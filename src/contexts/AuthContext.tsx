@@ -31,6 +31,10 @@ interface AuthContextType {
   fetchChildGrowthRecords: (childId: string) => Promise<any[]>
   fetchChildHealthRecords: (childId: string) => Promise<any[]>
   fetchChildMemories: (childId: string) => Promise<any[]>
+  createActivity: (childId: string, activityData: any) => Promise<{ data: any; error: any }>
+  createGrowthRecord: (childId: string, growthData: any) => Promise<{ data: any; error: any }>
+  createHealthRecord: (childId: string, healthData: any) => Promise<{ data: any; error: any }>
+  createMemory: (childId: string, memoryData: any) => Promise<{ data: any; error: any }>
   loading: boolean
 }
 
@@ -554,6 +558,110 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const createActivity = async (childId: string, activityData: any) => {
+    if (!user) return { data: null, error: new Error('User not authenticated') }
+
+    try {
+      const { data, error } = await supabase
+        .from('activities')
+        .insert({
+          user_id: user.id,
+          daughter_id: childId,
+          ...activityData
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating activity:', error)
+        return { data: null, error }
+      }
+
+      return { data, error: null }
+    } catch (error) {
+      console.error('Unexpected error creating activity:', error)
+      return { data: null, error }
+    }
+  }
+
+  const createGrowthRecord = async (childId: string, growthData: any) => {
+    if (!user) return { data: null, error: new Error('User not authenticated') }
+
+    try {
+      const { data, error } = await supabase
+        .from('growth_records')
+        .insert({
+          user_id: user.id,
+          daughter_id: childId,
+          ...growthData
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating growth record:', error)
+        return { data: null, error }
+      }
+
+      return { data, error: null }
+    } catch (error) {
+      console.error('Unexpected error creating growth record:', error)
+      return { data: null, error }
+    }
+  }
+
+  const createHealthRecord = async (childId: string, healthData: any) => {
+    if (!user) return { data: null, error: new Error('User not authenticated') }
+
+    try {
+      const { data, error } = await supabase
+        .from('health_records')
+        .insert({
+          user_id: user.id,
+          daughter_id: childId,
+          ...healthData
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating health record:', error)
+        return { data: null, error }
+      }
+
+      return { data, error: null }
+    } catch (error) {
+      console.error('Unexpected error creating health record:', error)
+      return { data: null, error }
+    }
+  }
+
+  const createMemory = async (childId: string, memoryData: any) => {
+    if (!user) return { data: null, error: new Error('User not authenticated') }
+
+    try {
+      const { data, error } = await supabase
+        .from('memories')
+        .insert({
+          user_id: user.id,
+          daughter_id: childId,
+          ...memoryData
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating memory:', error)
+        return { data: null, error }
+      }
+
+      return { data, error: null }
+    } catch (error) {
+      console.error('Unexpected error creating memory:', error)
+      return { data: null, error }
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -573,6 +681,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchChildGrowthRecords,
         fetchChildHealthRecords,
         fetchChildMemories,
+        createActivity,
+        createGrowthRecord,
+        createHealthRecord,
+        createMemory,
         loading,
       }}
     >
