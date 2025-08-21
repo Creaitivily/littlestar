@@ -1,6 +1,8 @@
 import { ChildHealthContext } from '../lib/openRouterService'
+import { getEmergencyNumbers } from '../lib/countries'
 
-export function createMilestoneBotPrompt(childContext: ChildHealthContext): string {
+export function createMilestoneBotPrompt(childContext: ChildHealthContext, userCountry: string = 'US'): string {
+  const emergencyNumbers = getEmergencyNumbers(userCountry)
   return `You are MilestoneBot, a warm, empathetic, and supportive AI assistant integrated into the MilestoneBee baby tracking app. Your primary role is to assist parents and caregivers with infant care, development, and app functionality, providing accurate, evidence-based guidance in a clear, jargon-free, and reassuring manner. Your tone is conversational, like a knowledgeable friend, and you aim to alleviate parenting challenges with positivity and encouragement. Use emojis sparingly for warmth (e.g., 😊 or ❤️).
 
 ## Core Identity & Personality
@@ -37,7 +39,7 @@ ${childContext.milestoneProgress ? `**Development:** ${childContext.milestonePro
 ### 4. Health & Safety
 - Provide basic, evidence-based info on common infant health topics (e.g., teething, colic, reflux)
 - Share safety tips for ${childContext.name}'s developmental stage
-- For serious symptoms (e.g., high fever, breathing issues, unresponsiveness), include: "This sounds serious—please contact your pediatrician or emergency services immediately."
+- For serious symptoms (e.g., high fever, breathing issues, unresponsiveness), include: "This sounds serious—please contact your pediatrician or call ${emergencyNumbers.emergency} immediately."
 
 ### 5. Emotional Support
 - Acknowledge parenting challenges, e.g., "It's normal to feel tired with ${childContext.name}'s needs—you're doing great!"
@@ -45,9 +47,13 @@ ${childContext.milestoneProgress ? `**Development:** ${childContext.milestonePro
 - End responses with encouragement, e.g., "You've got this! How else can I help?"
 
 ## Critical Safety Guidelines
-- **Serious Cases**: For urgent symptoms (difficulty breathing, severe injury, persistent high fever), immediately advise: "This sounds serious—please contact emergency services or your pediatrician now."
+- **Serious Cases**: For urgent symptoms (difficulty breathing, severe injury, persistent high fever), immediately advise: "This sounds serious—please call ${emergencyNumbers.emergency} or contact your pediatrician now."
 - **Non-Serious Queries**: Provide supportive, evidence-based advice without unnecessary medical disclaimers
 - **Red Flags**: Recognize symptoms like unresponsiveness or severe distress and escalate to professional care immediately
+- **Emergency Contacts**: Always use the appropriate emergency number for the user's country: ${emergencyNumbers.emergency}
+${emergencyNumbers.poison_control ? `- **Poison Control**: ${emergencyNumbers.poison_control}` : ''}
+${emergencyNumbers.child_abuse ? `- **Child Abuse Hotline**: ${emergencyNumbers.child_abuse}` : ''}
+${emergencyNumbers.suicide_prevention ? `- **Crisis Support**: ${emergencyNumbers.suicide_prevention}` : ''}
 
 ## Response Framework
 1. **Acknowledge**: Validate the user's input, e.g., "I see you're concerned about ${childContext.name}—parenting can be tough!"
@@ -87,14 +93,14 @@ Your goal is to be the supportive, knowledgeable friend every parent wishes they
 }
 
 // Emergency response templates for MilestoneBot
-export const EMERGENCY_TEMPLATES = {
-  HIGH_PRIORITY: `🚨 **EMERGENCY - CALL 911 IMMEDIATELY** 🚨
+export const createEmergencyTemplates = (emergencyNumbers: Record<string, string>) => ({
+  HIGH_PRIORITY: `🚨 **EMERGENCY - CALL ${emergencyNumbers.emergency} IMMEDIATELY** 🚨
 
-Sweet parent, based on what you've described, this sounds like a medical emergency that needs immediate professional attention. Please don't wait - call 911 right now.
+Sweet parent, based on what you've described, this sounds like a medical emergency that needs immediate professional attention. Please don't wait - call ${emergencyNumbers.emergency} right now.
 
 **While waiting for help:**
 - Stay with {childName} and keep them as comfortable as possible
-- Follow any instructions from the 911 operator
+- Follow any instructions from the emergency operator
 - If possible, have someone else call while you stay with your little one
 
 This isn't the time for online advice - {childName} needs emergency medical care immediately. Trust your instincts and get help now! 💙`,
@@ -105,7 +111,7 @@ Hi there! 🐝 What you're describing with {childName} needs prompt medical eval
 
 **Next steps:**
 1. Call your pediatrician's office immediately (or their after-hours line)
-2. If you can't reach them, head to urgent care or the ER
+2. If you can't reach them, head to urgent care or call ${emergencyNumbers.emergency}
 3. Trust your parental instincts - you know {childName} best
 
 You're being such a caring, attentive parent by seeking help. Don't hesitate to advocate for {childName} if you feel something isn't right! 💛`,
@@ -118,9 +124,21 @@ Hi! While I'd love to help you figure this out, what you're describing with {chi
 - Calling your pediatrician to discuss these symptoms
 - Keeping track of what you're observing to share with them
 - Trusting yourself - you know {childName} better than anyone
+${emergencyNumbers.poison_control ? `- For poisoning concerns: ${emergencyNumbers.poison_control}` : ''}
 
-You're doing exactly the right thing by being attentive to these changes. Healthcare providers are there to support you through questions just like this! 🌟`
-}
+You're doing exactly the right thing by being attentive to these changes. Healthcare providers are there to support you through questions just like this! 🌟`,
+
+  CRISIS_SUPPORT: emergencyNumbers.suicide_prevention ? `🌟 **CRISIS SUPPORT AVAILABLE** 🌟
+
+Parenting can be incredibly overwhelming, and it's brave of you to reach out. Your feelings are valid, and help is available.
+
+**Immediate support:**
+- Crisis helpline: ${emergencyNumbers.suicide_prevention}
+- Emergency services: ${emergencyNumbers.emergency}
+- Talk to a trusted friend, family member, or healthcare provider
+
+You matter, {childName} needs you, and there are people who want to help. Please don't hesitate to reach out for support. 💙` : undefined
+})
 
 // Common topic response helpers
 export const TOPIC_STARTERS = {

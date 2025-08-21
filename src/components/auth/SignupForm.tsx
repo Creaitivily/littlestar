@@ -88,10 +88,11 @@ export function SignupForm() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-lavender-50 via-cream-50 to-mint-50 p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-cream-50 via-peach-50 to-sage-50 p-4 overflow-x-hidden">
+        <div className="w-full max-w-md mx-auto">
+          <Card className="w-full">
           <CardHeader className="text-center">
-            <Link to="/landing" className="flex justify-center mb-4">
+            <Link to="/home" className="flex justify-center mb-4">
               <Star className="w-12 h-12 text-lavender-500 hover:text-lavender-600 transition-colors" />
             </Link>
             <CardTitle className="text-2xl font-bold text-gray-800">Check Your Email</CardTitle>
@@ -105,15 +106,17 @@ export function SignupForm() {
             </Link>
           </CardHeader>
         </Card>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-lavender-50 via-cream-50 to-mint-50 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-cream-50 via-peach-50 to-sage-50 p-4 overflow-x-hidden">
+      <div className="w-full max-w-md mx-auto">
+        <Card className="w-full">
         <CardHeader className="text-center">
-          <Link to="/landing" className="flex justify-center mb-4">
+          <Link to="/home" className="flex justify-center mb-4">
             <img src="/logo.png" alt="MilestoneBee" className="w-12 h-12 hover:scale-105 transition-transform" />
           </Link>
           <CardTitle className="text-2xl font-bold text-gray-800">Create Account</CardTitle>
@@ -271,7 +274,8 @@ export function SignupForm() {
             </div>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+        </div>
     </div>
   )
 }

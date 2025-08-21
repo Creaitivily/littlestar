@@ -73,10 +73,11 @@ export function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-lavender-50 via-cream-50 to-mint-50 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-cream-50 via-peach-50 to-sage-50 p-4 overflow-x-hidden">
+      <div className="w-full max-w-md mx-auto">
+        <Card className="w-full">
         <CardHeader className="text-center">
-          <Link to="/landing" className="flex justify-center mb-4">
+          <Link to="/home" className="flex justify-center mb-4">
             <img src="/logo.png" alt="MilestoneBee" className="w-12 h-12 hover:scale-105 transition-transform" />
           </Link>
           <CardTitle className="text-2xl font-bold text-gray-800">Welcome Back</CardTitle>
@@ -185,7 +186,8 @@ export function LoginForm() {
             </div>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   )
 }

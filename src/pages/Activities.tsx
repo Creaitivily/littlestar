@@ -10,14 +10,21 @@ import {
   Play, 
   BookOpen, 
   Trees,
-  Clock
+  Clock,
+  Baby
 } from 'lucide-react'
 import { activities } from '@/data/mockData'
-import { formatDate, getMoodEmoji, getCategoryIcon } from '@/lib/utils'
+import { formatDate, getMoodEmoji, getCategoryIcon, calculateAgeInMonths } from '@/lib/utils'
 import { AddActivityForm } from '@/components/forms/AddActivityForm'
+import { useChild } from '@/contexts/ChildContext'
 
 export function Activities() {
   const [showActivityForm, setShowActivityForm] = useState(false)
+  const { selectedChild } = useChild()
+  
+  // Calculate child's age in months to determine appropriate activities
+  const ageInMonths = selectedChild ? calculateAgeInMonths(selectedChild.birth_date) : 12
+  const isInfant = ageInMonths <= 6 // 0-6 months
   
   const todayActivities = activities.filter(activity => 
     activity.date === new Date().toISOString().split('T')[0]
@@ -45,7 +52,10 @@ export function Activities() {
       case 'sleep':
         return <Moon className="w-5 h-5" />
       case 'meal':
+      case 'feeding':
         return <Utensils className="w-5 h-5" />
+      case 'diaper':
+        return <Baby className="w-5 h-5" />
       case 'play':
         return <Play className="w-5 h-5" />
       case 'learning':
@@ -72,7 +82,7 @@ export function Activities() {
       </div>
 
       {/* Today's Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+      <div className={`grid grid-cols-1 gap-6 ${isInfant ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
         <Card className="bg-lavender-50 border-lavender-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Sleep</CardTitle>
@@ -86,12 +96,16 @@ export function Activities() {
 
         <Card className="bg-mint-50 border-mint-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Meals</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">
+              {isInfant ? 'Feeding' : 'Meals'}
+            </CardTitle>
             <Utensils className="h-4 w-4 text-mint-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-800">3/3</div>
-            <p className="text-xs text-gray-600 mt-1">All meals eaten</p>
+            <div className="text-2xl font-bold text-gray-800">{isInfant ? '8/8' : '3/3'}</div>
+            <p className="text-xs text-gray-600 mt-1">
+              {isInfant ? 'All feedings done' : 'All meals eaten'}
+            </p>
           </CardContent>
         </Card>
 
@@ -127,6 +141,20 @@ export function Activities() {
             <p className="text-xs text-gray-600 mt-1">Park visit</p>
           </CardContent>
         </Card>
+
+        {/* Diaper Changes - Only show for infants */}
+        {isInfant && (
+          <Card className="bg-yellow-50 border-yellow-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Diapers</CardTitle>
+              <Baby className="h-4 w-4 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-gray-800">6</div>
+              <p className="text-xs text-gray-600 mt-1">Changes today</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

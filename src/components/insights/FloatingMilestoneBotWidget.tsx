@@ -192,10 +192,97 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
     }
   }
 
-  const handleQuickPrompt = (prompt: string) => {
-    setInputMessage(prompt)
+  const handleQuickPrompt = async (prompt: string) => {
     if (!isOpen) {
       setIsOpen(true)
+    }
+    
+    // Set the input message temporarily for the send process
+    setInputMessage(prompt)
+    
+    // Trigger the send process directly
+    if (!isLoading && user) {
+      // Handle case when no child is selected
+      if (!selectedChild) {
+        const noChildMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: "Hi there! 🐝 I'd love to help you with personalized advice, but I don't see any child profiles yet. Please add your child's information first, then I can give you age-appropriate guidance!",
+          isBot: true,
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          content: prompt,
+          isBot: false,
+          timestamp: new Date()
+        }, noChildMessage])
+        setInputMessage('')
+        return
+      }
+
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        content: prompt,
+        isBot: false,
+        timestamp: new Date(),
+        context: {
+          childAge: selectedChild ? calculateAge(selectedChild.birth_date) : undefined
+        }
+      }
+
+      setMessages(prev => [...prev, userMessage])
+      setInputMessage('')
+      setIsLoading(true)
+
+      try {
+        // Create child health context for the AI
+        const childAge = selectedChild.birth_date ? 
+          Math.floor((Date.now() - new Date(selectedChild.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 30.44)) : 0
+
+        const childContext: ChildHealthContext = {
+          id: selectedChild.id,
+          name: selectedChild.name,
+          ageMonths: childAge,
+          ageDisplay: calculateAge(selectedChild.birth_date),
+          latestGrowth: undefined,
+          vaccinationStatus: undefined,
+          milestoneProgress: undefined
+        }
+
+        // Call the OpenRouter service directly
+        const aiResponse = await openRouterService.processHealthQuery(
+          prompt,
+          user.id,
+          childContext
+        )
+        
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: aiResponse.content,
+          isBot: true,
+          timestamp: new Date()
+        }
+
+        setMessages(prev => [...prev, botMessage])
+        
+        // Show notification if widget is closed
+        if (!isOpen) {
+          setHasNewMessage(true)
+        }
+      } catch (error) {
+        console.error('MilestoneBot error:', error)
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: error instanceof Error && error.message.includes('limit') 
+            ? "I've reached my daily chat limit! 🐝 Please try again tomorrow or check your usage in settings."
+            : "Oops! I'm having a tiny bee-sized hiccup. Please try again in a moment! 🐝",
+          isBot: true,
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, errorMessage])
+      } finally {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -222,7 +309,7 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
     <div className={cn("fixed bottom-6 right-6 z-50", className)}>
       <Card className={cn(
         "w-96 bg-gradient-to-br from-honey-50 to-sage-50 border-sage-200 shadow-2xl transition-all duration-300",
-        isMinimized ? "h-16" : "h-[500px]"
+        isMinimized ? "h-16" : "h-[600px]"
       )}>
         <CardHeader className="bg-gradient-to-r from-sage-500 to-sage-600 text-white rounded-t-lg p-3">
           <div className="flex items-center justify-between">
@@ -271,7 +358,7 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
         {!isMinimized && (
           <CardContent className="flex-1 flex flex-col p-0">
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3 max-h-80">
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 max-h-96">
               {messages.map((message) => (
                 <div
                   key={message.id}

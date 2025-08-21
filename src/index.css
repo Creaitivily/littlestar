@@ -3,36 +3,74 @@
 @tailwind utilities;
 
 :root {
-  --background: 44 100% 98%;
-  --foreground: 120 25% 20%;
-  --card: 44 100% 98%;
-  --card-foreground: 120 25% 20%;
-  --popover: 44 100% 98%;
-  --popover-foreground: 120 25% 20%;
-  --primary: 120 20% 48%;
-  --primary-foreground: 44 100% 98%;
-  --secondary: 43 91% 75%;
-  --secondary-foreground: 120 25% 20%;
-  --muted: 150 30% 92%;
-  --muted-foreground: 120 15% 35%;
-  --accent: 12 100% 82%;
-  --accent-foreground: 120 25% 20%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 120 10% 85%;
-  --input: 120 10% 85%;
-  --ring: 43 91% 75%;
+  /* Light Theme - New Palette */
+  --background: 45 56% 96%; /* cream-100 */
+  --foreground: 237 10% 25%; /* navy-500 */
+  --card: 45 56% 98%; /* cream-50 */
+  --card-foreground: 237 10% 25%; /* navy-500 */
+  --popover: 45 56% 98%; /* cream-50 */
+  --popover-foreground: 237 10% 25%; /* navy-500 */
+  --primary: 14 64% 60%; /* coral-500 */
+  --primary-foreground: 45 56% 98%; /* cream-50 */
+  --secondary: 153 21% 60%; /* sage-400 */
+  --secondary-foreground: 237 10% 25%; /* navy-500 */
+  --muted: 40 42% 85%; /* peach-200 */
+  --muted-foreground: 237 10% 35%; /* navy-400 */
+  --accent: 40 77% 75%; /* peach-300 */
+  --accent-foreground: 237 10% 25%; /* navy-500 */
+  --destructive: 14 64% 50%; /* coral-600 */
+  --destructive-foreground: 45 56% 98%; /* cream-50 */
+  --border: 45 30% 88%; /* cream-200 */
+  --input: 45 30% 88%; /* cream-200 */
+  --ring: 14 64% 60%; /* coral-500 */
   --radius: 0.5rem;
+}
+
+/* Dark Theme - New Palette */
+.dark {
+  --background: 237 10% 15%; /* navy-800 */
+  --foreground: 45 56% 94%; /* cream-100 */
+  --card: 237 10% 18%; /* navy-700 */
+  --card-foreground: 45 56% 94%; /* cream-100 */
+  --popover: 237 10% 18%; /* navy-700 */
+  --popover-foreground: 45 56% 94%; /* cream-100 */
+  --primary: 14 64% 65%; /* coral-400 */
+  --primary-foreground: 237 10% 15%; /* navy-800 */
+  --secondary: 153 21% 55%; /* sage-500 */
+  --secondary-foreground: 45 56% 94%; /* cream-100 */
+  --muted: 237 10% 25%; /* navy-600 */
+  --muted-foreground: 45 30% 70%; /* cream-400 */
+  --accent: 40 77% 60%; /* peach-400 */
+  --accent-foreground: 45 56% 94%; /* cream-100 */
+  --destructive: 14 70% 55%; /* coral variant */
+  --destructive-foreground: 45 56% 94%; /* cream-100 */
+  --border: 237 10% 30%; /* navy-600 */
+  --input: 237 10% 30%; /* navy-600 */
+  --ring: 14 64% 65%; /* coral-400 */
 }
 
 * {
   border-color: hsl(var(--border));
 }
 
+html {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .line-clamp-2 {

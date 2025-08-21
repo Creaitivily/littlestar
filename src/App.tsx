@@ -1,6 +1,9 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { ThemeProvider } from './contexts/ThemeContext'
+import { ChildProvider } from './contexts/ChildContext'
+import { SidebarProvider } from './components/ui/sidebar'
 import { Layout } from './components/layout/Layout'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { AdminRoute } from './components/auth/AdminRoute'
@@ -14,6 +17,9 @@ import { Activities } from './pages/Activities'
 import { Memories } from './pages/Memories'
 import { Reports } from './pages/Reports'
 import { Insights } from './pages/Insights'
+import { Profile } from './pages/Profile'
+import { Subscriptions } from './pages/Subscriptions'
+import { Settings } from './pages/Settings'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { AdminLogin } from './pages/AdminLogin'
 import { TermsOfService } from './pages/TermsOfService'
@@ -21,18 +27,21 @@ import { PrivacyPolicy } from './pages/PrivacyPolicy'
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <ThemeProvider>
+      <AuthProvider>
+        <ChildProvider>
+          <SidebarProvider defaultOpen={true}>
+            <Router>
         <Routes>
           {/* Public routes */}
-          <Route path="/landing" element={<Landing />} />
+          <Route path="/home" element={<Landing />} />
           <Route path="/login" element={<LoginForm />} />
           <Route path="/signup" element={<SignupForm />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           
-          {/* Redirect root to landing page */}
-          <Route path="/" element={<Navigate to="/landing" replace />} />
+          {/* Redirect root to home page */}
+          <Route path="/" element={<Navigate to="/home" replace />} />
           
           {/* Admin routes */}
           <Route path="/admin" element={<AdminLogin />} />
@@ -92,9 +101,33 @@ function App() {
               </Layout>
             </ProtectedRoute>
           } />
-        </Routes>
-      </Router>
-    </AuthProvider>
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Layout>
+                <Profile />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/subscriptions" element={
+            <ProtectedRoute>
+              <Layout>
+                <Subscriptions />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Layout>
+                <Settings />
+              </Layout>
+            </ProtectedRoute>
+          } />
+            </Routes>
+          </Router>
+        </SidebarProvider>
+        </ChildProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 

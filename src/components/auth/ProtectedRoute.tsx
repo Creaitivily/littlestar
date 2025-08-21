@@ -19,7 +19,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user) {
-    return <Navigate to="/landing" replace />
+    return <Navigate to="/home" replace />
   }
 
   return <>{children}</>

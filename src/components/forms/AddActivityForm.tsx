@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { useChild } from '@/contexts/ChildContext'
+import { calculateAgeInMonths } from '@/lib/utils'
 
 interface AddActivityFormProps {
   open: boolean
@@ -13,6 +15,12 @@ interface AddActivityFormProps {
 }
 
 export function AddActivityForm({ open, onOpenChange, onSubmit }: AddActivityFormProps) {
+  const { selectedChild } = useChild()
+  
+  // Calculate child's age to determine appropriate activity options
+  const ageInMonths = selectedChild ? calculateAgeInMonths(selectedChild.birth_date) : 12
+  const isInfant = ageInMonths <= 6 // 0-6 months
+  
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     type: 'play',
@@ -67,9 +75,12 @@ export function AddActivityForm({ open, onOpenChange, onSubmit }: AddActivityFor
               >
                 <option value="play">Play</option>
                 <option value="learning">Learning</option>
-                <option value="meal">Meal</option>
+                <option value={isInfant ? "feeding" : "meal"}>
+                  {isInfant ? "Feeding" : "Meal"}
+                </option>
                 <option value="sleep">Sleep</option>
                 <option value="outdoor">Outdoor</option>
+                {isInfant && <option value="diaper">Diaper Change</option>}
               </select>
             </div>
           </div>

@@ -35,11 +35,12 @@ const COST_LIMITS = {
 }
 
 // Child health context interface
-interface ChildHealthContext {
+export interface ChildHealthContext {
   id: string
   name: string
   ageMonths: number
   ageDisplay: string
+  userCountry?: string
   latestGrowth?: {
     height?: number
     weight?: number
@@ -198,7 +199,7 @@ class OpenRouterService {
 
   // Create system prompt with child context
   private createSystemPrompt(childContext: ChildHealthContext): string {
-    return createMilestoneBotPrompt(childContext)
+    return createMilestoneBotPrompt(childContext, childContext.userCountry || 'US')
   }
 
   // Compress context for cost optimization
@@ -208,6 +209,7 @@ class OpenRouterService {
       name: childContext.name,
       ageMonths: childContext.ageMonths,
       ageDisplay: childContext.ageDisplay,
+      userCountry: childContext.userCountry,
       latestGrowth: childContext.latestGrowth ? {
         heightPercentile: childContext.latestGrowth.heightPercentile,
         weightPercentile: childContext.latestGrowth.weightPercentile,

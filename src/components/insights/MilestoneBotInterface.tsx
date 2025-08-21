@@ -14,6 +14,7 @@ import {
   BookOpen
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useUserSettings } from '@/hooks/useUserSettings'
 
 interface Message {
   id: string
@@ -32,6 +33,7 @@ interface MilestoneBotInterfaceProps {
 }
 
 export function MilestoneBotInterface({ className, selectedChild }: MilestoneBotInterfaceProps) {
+  const { settings } = useUserSettings()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -68,7 +70,8 @@ export function MilestoneBotInterface({ className, selectedChild }: MilestoneBot
       isBot: false,
       timestamp: new Date(),
       context: {
-        childAge: selectedChild ? calculateAge(selectedChild.birth_date) : undefined
+        childAge: selectedChild ? calculateAge(selectedChild.birth_date) : undefined,
+        userCountry: settings.country
       }
     }
 
@@ -83,7 +86,11 @@ export function MilestoneBotInterface({ className, selectedChild }: MilestoneBot
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: inputMessage,
-          context: userMessage.context,
+          context: {
+            ...userMessage.context,
+            selectedChild,
+            userCountry: settings.country
+          },
           conversationHistory: messages.slice(-5) // Last 5 messages for context
         })
       })

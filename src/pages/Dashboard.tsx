@@ -17,21 +17,21 @@ import { AddActivityForm } from '@/components/forms/AddActivityForm'
 import { AddGrowthForm } from '@/components/forms/AddGrowthForm'
 import { AddMemoryForm } from '@/components/forms/AddMemoryForm'
 import { ChildOnboardingModal } from '../components/auth/ChildOnboardingModal'
-import { ChildSelector } from '../components/ui/ChildSelector'
 import { useAuth } from '../contexts/AuthContext'
+import { useChild } from '../contexts/ChildContext'
 
 export function Dashboard() {
   const [showActivityForm, setShowActivityForm] = useState(false)
   const [showGrowthForm, setShowGrowthForm] = useState(false)
   const [showMemoryForm, setShowMemoryForm] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
-  const [selectedChild, setSelectedChild] = useState<any>(null)
   const [childActivities, setChildActivities] = useState<any[]>([])
   const [childGrowthRecords, setChildGrowthRecords] = useState<any[]>([])
   const [childHealthRecords, setChildHealthRecords] = useState<any[]>([])
   const [initialCheckComplete, setInitialCheckComplete] = useState(false)
   
   const { hasChildren, children, createChild, fetchChildren, user, fetchChildActivities, fetchChildGrowthRecords, fetchChildHealthRecords, loading } = useAuth()
+  const { selectedChild } = useChild()
   
   // Use child-specific data or fall back to mock data
   const recentActivities = childActivities.slice(0, 3).length > 0 ? childActivities.slice(0, 3) : activities.slice(0, 3)
@@ -70,12 +70,6 @@ export function Dashboard() {
     }
   }, [user, hasChildren, loading, children.length, initialCheckComplete, showOnboarding])
 
-  // Auto-select first child when children are loaded
-  useEffect(() => {
-    if (children.length > 0 && !selectedChild) {
-      setSelectedChild(children[0])
-    }
-  }, [children, selectedChild])
 
   // Fetch child-specific data when selected child changes
   useEffect(() => {
@@ -153,10 +147,6 @@ export function Dashboard() {
   // Get the selected child for display, or fall back to mock data for empty state
   const currentChild = selectedChild || daughterProfile
   
-  const handleChildSelect = (child: any) => {
-    setSelectedChild(child)
-    console.log('Selected child:', child.name)
-  }
 
   return (
     <div className="space-y-8">
@@ -178,22 +168,11 @@ export function Dashboard() {
             </p>
           </div>
         </div>
-
-        {/* Child Selector */}
-        {hasChildren && (
-          <div className="max-w-md">
-            <ChildSelector
-              children={children}
-              selectedChild={selectedChild}
-              onChildSelect={handleChildSelect}
-            />
-          </div>
-        )}
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-lavender-50 border-lavender-200">
+        <Card className="bg-cream-100 border-cream-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Current Height</CardTitle>
             <TrendingUp className="h-4 w-4 text-lavender-500" />
@@ -211,7 +190,7 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-mint-50 border-mint-200">
+        <Card className="bg-sage-50 border-sage-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Current Weight</CardTitle>
             <Heart className="h-4 w-4 text-mint-500" />
@@ -266,7 +245,7 @@ export function Dashboard() {
             <div className="space-y-4">
               {recentActivities.length > 0 ? (
                 recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-center justify-between p-3 bg-lavender-50 rounded-lg">
+                  <div key={activity.id} className="flex items-center justify-between p-3 bg-cream-100 rounded-lg">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{getMoodEmoji(activity.mood || 'neutral')}</span>
                       <div>
@@ -307,7 +286,7 @@ export function Dashboard() {
             <div className="space-y-4">
               {upcomingAppointments.length > 0 ? (
                 upcomingAppointments.map((appointment) => (
-                  <div key={appointment.id} className="flex items-center justify-between p-3 bg-mint-50 rounded-lg">
+                  <div key={appointment.id} className="flex items-center justify-between p-3 bg-sage-50 rounded-lg">
                     <div>
                       <h4 className="font-medium text-gray-800">{appointment.type}</h4>
                       <p className="text-sm text-gray-600">{appointment.description}</p>

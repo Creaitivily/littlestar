@@ -32,6 +32,16 @@ export function calculateAge(birthDate: string): string {
   return `${years} year${years !== 1 ? 's' : ''}${months > 0 ? `, ${months} month${months !== 1 ? 's' : ''}` : ''}`
 }
 
+export function calculateAgeInMonths(birthDate: string, referenceDate?: string): number {
+  const birth = new Date(birthDate)
+  const reference = referenceDate ? new Date(referenceDate) : new Date()
+  
+  const yearsDiff = reference.getFullYear() - birth.getFullYear()
+  const monthsDiff = reference.getMonth() - birth.getMonth()
+  
+  return yearsDiff * 12 + monthsDiff
+}
+
 export function getMoodEmoji(mood: string): string {
   const moodEmojis: Record<string, string> = {
     happy: '😊',
@@ -51,6 +61,8 @@ export function getCategoryIcon(category: string): string {
     emotional: '❤️',
     sleep: '😴',
     meal: '🍽️',
+    feeding: '🍼',
+    diaper: '👶',
     play: '🎮',
     learning: '📚',
     outdoor: '🌳'

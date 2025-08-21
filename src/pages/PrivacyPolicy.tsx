@@ -11,11 +11,11 @@ export function PrivacyPolicy() {
       <nav className="bg-white/80 backdrop-blur-sm border-b border-lavender-200 sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link to="/landing" className="flex items-center gap-2">
+            <Link to="/home" className="flex items-center gap-2">
               <Star className="w-8 h-8 text-lavender-500" />
               <span className="text-xl font-bold text-gray-800">Little Star</span>
             </Link>
-            <Link to="/landing">
+            <Link to="/home">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Home
