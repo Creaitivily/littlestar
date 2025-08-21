@@ -1,10 +1,5 @@
 {
   "outputDirectory": "dist",
-  "functions": {
-    "app/**/*": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "rewrites": [
     {
       "source": "/(.*)",
