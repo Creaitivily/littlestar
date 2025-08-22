@@ -13,9 +13,9 @@ if (!API_KEY) {
   console.warn('⚠️ VITE_GOOGLE_API_KEY is not set in environment variables')
 }
 
-// Google Photos scopes
-const DISCOVERY_DOC = 'https://photospicker.googleapis.com/$discovery/rest?version=v1'
-const SCOPES = 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly'
+// Google Photos Picker scopes
+const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/photoslibrary/v1/rest'
+const SCOPES = 'https://www.googleapis.com/auth/photoslibrary.readonly'
 
 interface SelectedPhoto {
   mediaItems: Array<{
@@ -157,7 +157,9 @@ export class GooglePhotosService {
       }
 
       const picker = new window.google.picker.PickerBuilder()
-        .addView(window.google.picker.ViewId.PHOTOS)
+        .addView(new window.google.picker.DocsView(window.google.picker.ViewId.PHOTOS)
+          .setIncludeFolders(true)
+          .setSelectFolderEnabled(false))
         .setOAuthToken(this.accessToken)
         .setDeveloperKey(API_KEY)
         .setCallback((data: any) => {

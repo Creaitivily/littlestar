@@ -26,6 +26,7 @@ import { AdminDashboard } from './pages/AdminDashboard'
 import { AdminLogin } from './pages/AdminLogin'
 import { TermsOfService } from './pages/TermsOfService'
 import { PrivacyPolicy } from './pages/PrivacyPolicy'
+import { OAuthCallback } from './components/auth/OAuthCallback'
 
 function App() {
   return (
@@ -42,8 +43,10 @@ function App() {
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           
-          {/* OAuth callback route */}
-          <Route path="/auth/google/callback" element={<Navigate to="/dashboard" replace />} />
+          {/* OAuth callback routes */}
+          <Route path="/auth/google/callback" element={<OAuthCallback />} />
+          <Route path="/auth/callback" element={<OAuthCallback />} />
+          <Route path="#" element={<OAuthCallback />} />
           
           {/* Redirect root to home page */}
           <Route path="/" element={<Navigate to="/home" replace />} />

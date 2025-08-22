@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { 
   Heart, 
   Shield, 
@@ -24,6 +25,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 
 export function Landing() {
   const navigate = useNavigate()
+  useAuthRedirect() // Handle OAuth redirects
 
   const features = [
     {

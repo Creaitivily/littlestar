@@ -9,4 +9,8 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    port: 5182, // Fixed port to match current server
+    strictPort: true, // Use this exact port
+  },
 })

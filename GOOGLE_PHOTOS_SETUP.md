@@ -42,7 +42,7 @@ This guide will help you set up Google Photos integration for MilestoneBee. User
      - App name: "MilestoneBee"
      - User support email: Your email
      - Developer contact: Your email
-   - Add scopes: `https://www.googleapis.com/auth/photospicker.mediaitems.readonly`
+   - Add scopes: `https://www.googleapis.com/auth/photoslibrary.readonly`
    - Add test users if needed
 3. Create OAuth 2.0 Client ID:
    - Application type: **Web application**
