@@ -164,6 +164,7 @@ export type Database = {
           description: string | null
           image_url: string | null
           attachment_url: string | null
+          attachment_urls: string[] | null
           google_photos_url: string | null
           google_photos_urls: string[] | null
           date: string
@@ -177,6 +178,7 @@ export type Database = {
           description?: string | null
           image_url?: string | null
           attachment_url?: string | null
+          attachment_urls?: string[] | null
           google_photos_url?: string | null
           google_photos_urls?: string[] | null
           date: string
@@ -190,6 +192,7 @@ export type Database = {
           description?: string | null
           image_url?: string | null
           attachment_url?: string | null
+          attachment_urls?: string[] | null
           google_photos_url?: string | null
           google_photos_urls?: string[] | null
           date?: string

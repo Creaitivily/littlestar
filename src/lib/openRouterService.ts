@@ -90,9 +90,95 @@ interface AIResponse {
   emergencyDetected: boolean
   safetyFlags: Record<string, any>
   childContextUsed: Partial<ChildHealthContext>
+  wordCount?: number
+  professionalTone?: boolean
+  evidenceCitations?: number
 }
 
 class OpenRouterService {
+  // Response validation and quality control
+  private validateResponseQuality(content: string): {
+    wordCount: number
+    professionalTone: boolean
+    evidenceCitations: number
+    needsTruncation: boolean
+    qualityScore: number
+  } {
+    const words = content.split(/\s+/).filter(word => word.length > 0)
+    const wordCount = words.length
+    const needsTruncation = wordCount > 150
+    
+    // Check for unprofessional language patterns (allow compassionate acknowledgments)
+    const allowedCompassionate = [
+      'common', 'concerning', 'understandable', 'challenging', 'difficult',
+      'seeking guidance', 'shows care', 'this concern', 'disruptions', 'struggles'
+    ]
+    
+    const excessiveEmotional = [
+      'amazing', 'wonderful', 'great job', 'you\'re doing great', 'don\'t worry',
+      '😊', '❤️', '🎉', '😄', '💝', '🐝', 'excited', 'celebration', 'fantastic'
+    ]
+    
+    const hasExcessiveEmotional = excessiveEmotional.some(phrase => 
+      content.toLowerCase().includes(phrase.toLowerCase())
+    )
+    
+    const hasCompassionate = allowedCompassionate.some(phrase =>
+      content.toLowerCase().includes(phrase.toLowerCase())
+    )
+    
+    // Count evidence citations
+    const evidencePatterns = [
+      /AAP|American Academy of Pediatrics/gi,
+      /WHO|World Health Organization/gi,
+      /CDC|Centers for Disease Control/gi,
+      /\b\d+\s*(hours?|minutes?|ml|oz|months?|weeks?)\b/gi,
+      /studies? show|research indicates|according to/gi
+    ]
+    const evidenceCitations = evidencePatterns.reduce((count, pattern) => {
+      const matches = content.match(pattern)
+      return count + (matches ? matches.length : 0)
+    }, 0)
+    
+    const professionalTone = !hasExcessiveEmotional && (evidenceCitations > 0 || hasCompassionate)
+    const qualityScore = (professionalTone ? 0.5 : 0) + 
+                        (evidenceCitations * 0.1) + 
+                        (hasCompassionate ? 0.1 : 0) +
+                        (wordCount <= 150 ? 0.3 : 0)
+    
+    return {
+      wordCount,
+      professionalTone,
+      evidenceCitations,
+      needsTruncation,
+      qualityScore: Math.min(1, qualityScore)
+    }
+  }
+
+  private truncateResponseSmart(content: string, maxWords: number = 150): string {
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim())
+    let result = ''
+    let wordCount = 0
+    
+    for (const sentence of sentences) {
+      const sentenceWords = sentence.trim().split(/\s+/).length
+      if (wordCount + sentenceWords <= maxWords) {
+        result += sentence.trim() + '. '
+        wordCount += sentenceWords
+      } else {
+        break
+      }
+    }
+    
+    // Ensure we end with proper punctuation
+    result = result.trim()
+    if (!result.endsWith('.') && !result.endsWith('!') && !result.endsWith('?')) {
+      result += '.'
+    }
+    
+    return result
+  }
+
   private async makeAPIRequest(
     messages: Array<{ role: string; content: string }>,
     model: keyof typeof MODELS = 'PRIMARY',
@@ -364,13 +450,14 @@ Don't wait to see if symptoms improve - seek professional medical advice now.`
     const isEmergency = hasEmergencyKeyword || criticalHelp
     
     if (isEmergency) {
-      response = `I see you're concerned about ${childContext.name}—parenting can be really tough when worrying about their health! 😊
+      response = `For ${childContext.name} at ${childContext.ageDisplay}, these symptoms require immediate medical evaluation. Contact your pediatrician or call emergency services immediately.
 
-Based on what you've shared, this sounds like it could be serious. **Please contact your pediatrician or emergency services right away** for ${childContext.name}'s safety.
+**Immediate actions:**
+- Monitor breathing and consciousness
+- Keep child comfortable
+- Prepare to provide symptom timeline to medical professionals
 
-While you're getting professional help, keep ${childContext.name} comfortable and monitor their symptoms closely. Trust your instincts—you know ${childContext.name} best!
-
-You're doing exactly the right thing by seeking help. What else can I help with for ${childContext.name}?`
+Do not delay seeking professional medical care for ${childContext.name}.`
     }
     // Sleep-related questions
     else if (
@@ -390,20 +477,14 @@ You're doing exactly the right thing by seeking help. What else can I help with 
         '12-15 hours per day, may start sleeping longer stretches' :
         '11-14 hours per day with 1-2 naps'
 
-      response = `I understand sleep challenges with ${childContext.name} can be exhausting—you're definitely not alone in this! 😊
+      response = `For ${childContext.name} at ${childContext.ageDisplay}, sleep requirements: ${ageSpecificSleep} (AAP guidelines).
 
-**For ${childContext.name} at ${childContext.ageDisplay}:**
-Sleep needs: ${ageSpecificSleep}
+**Evidence-based interventions:**
+- Sleep environment: 68-70°F, dark, quiet
+- ${childContext.ageMonths <= 6 ? 'Safe Sleep Seven: back sleeping, firm surface, no loose bedding' : 'Consistent bedtime routine 30-45 minutes'}
+- ${childContext.ageMonths <= 3 ? 'Night wakings every 2-3 hours normal for feeding' : 'Sleep consolidation typically begins 4-6 months'}
 
-**Gentle strategies that work well:**
-- Consistent bedtime routine (bath, story, quiet time)
-- Room environment: cool (68-70°F), dark, quiet
-- ${childContext.ageMonths <= 6 ? 'Safe swaddling or sleep sack' : 'Comfortable sleep sack'}
-- ${childContext.ageMonths <= 3 ? 'Remember: frequent wakings are normal for newborns!' : 'Practice putting down awake to encourage self-soothing'}
-
-Every family's sleep journey is unique, and with patience and consistency, you'll find what works best for ${childContext.name}! You're doing an amazing job.
-
-What else can I help with for ${childContext.name}?`
+Monitor sleep patterns and consult pediatrician if significant deviations from age-appropriate norms occur.`
     }
     // Feeding-related questions  
     else if (
@@ -422,36 +503,28 @@ What else can I help with for ${childContext.name}?`
       let feedingGuidance = ''
       
       if (childContext.ageMonths <= 6) {
-        feedingGuidance = `**Feeding for ${childContext.name} at ${childContext.ageDisplay}:**
-- Exclusive breastfeeding or formula is perfect right now
-- On-demand feeding every 2-3 hours is typical
-- Watch for hunger cues (rooting, lip smacking, fist to mouth)
-- Growth spurts may increase appetite temporarily`
+        feedingGuidance = `**Nutritional requirements ${childContext.name} (${childContext.ageDisplay}):**
+- Exclusive breastfeeding/formula: 150-200ml/kg/day
+- Feeding frequency: every 2-3 hours (8-12 feeds/day)
+- Growth velocity: 25-35g/day expected weight gain
+- Iron stores sufficient until 6 months (WHO/AAP)`
       } else if (childContext.ageMonths <= 12) {
-        feedingGuidance = `**Feeding for ${childContext.name} at ${childContext.ageDisplay}:**
-- Continue breast milk/formula as primary nutrition
-- Introduce solids gradually: single ingredients, 3-5 days apart
-- Start with iron-rich foods (baby cereal, pureed meats)
-- Let ${childContext.name} explore textures and self-feed when ready
-- Signs of readiness: sits up well, good head control, reaches for food`
+        feedingGuidance = `**Feeding protocol ${childContext.name} (${childContext.ageDisplay}):**
+- Complementary feeding: 6 months minimum (WHO guidelines)
+- Iron-fortified cereals: 4-6mg iron/day requirement
+- Progression: single foods 3-5 days, texture advancement
+- Breastmilk/formula continues: 500-600ml/day minimum`
       } else {
-        feedingGuidance = `**Feeding for ${childContext.name} at ${childContext.ageDisplay}:**
-- Transition to more table foods and family meals
-- Offer variety: fruits, vegetables, proteins, whole grains
-- ${childContext.name} can use utensils and cup drinking
-- Continue breast milk/formula if desired, but food becomes primary nutrition
-- Avoid choking hazards (whole grapes, nuts, hard candies)`
+        feedingGuidance = `**Nutritional needs ${childContext.name} (${childContext.ageDisplay}):**
+- Caloric requirement: 1000-1400 calories/day
+- Protein: 13-16g/day recommended
+- Transition to family foods, varied textures
+- Milk: 16-24oz/day maximum to prevent iron deficiency`
       }
 
-      response = `Feeding questions are so common—you're being such a thoughtful parent to ${childContext.name}! 😊
+      response = `${feedingGuidance}
 
-${feedingGuidance}
-
-**Remember:** Every child's appetite varies day to day. Follow ${childContext.name}'s cues, offer variety, and make mealtimes positive experiences. You're doing great!
-
-Always check with your pediatrician about ${childContext.name}'s specific nutritional needs and any concerns.
-
-What else can I help with for ${childContext.name}?`
+Consult pediatrician for growth assessment and individualized nutritional guidance for ${childContext.name}.`
     }
     // Development and milestone questions
     else if (
@@ -475,82 +548,38 @@ What else can I help with for ${childContext.name}?`
       let developmentGuidance = ''
       
       if (childContext.ageMonths <= 3) {
-        developmentGuidance = `**Development for ${childContext.name} at ${childContext.ageDisplay}:**
-- Social smiling (around 2 months) 
-- Following objects with eyes
-- Holding head up during tummy time
-- Making cooing sounds
-- Starting to reach for objects
-
-**Great activities for ${childContext.name}:**
-- Tummy time (3-5 minutes, several times daily)
-- High-contrast black & white pictures
-- Gentle talking and singing
-- Rattles and soft toys for grasping practice
-- Face-to-face interaction and peek-a-boo`
+        developmentGuidance = `**Developmental milestones ${childContext.name} (${childContext.ageDisplay}):**
+- Social smile: 6-8 weeks (CDC milestone)
+- Head control: 90° by 3 months
+- Visual tracking: 180° by 2-3 months  
+- Reflexes: Moro, rooting, palmar grasp present
+- Vocalizations: cooing sounds 2-3 months`
       } else if (childContext.ageMonths <= 6) {
-        developmentGuidance = `**Development for ${childContext.name} at ${childContext.ageDisplay}:**
-- Rolling over (both ways)
-- Sitting with support, working toward independent sitting
-- Reaching and grasping toys
-- Babbling sounds
-- Showing interest in solid foods
-
-**Perfect activities for ${childContext.name}:**
-- Colorful toys they can grasp and mouth
-- Baby-safe mirrors for self-discovery
-- Cause-and-effect toys (rattles, crinkly books)
-- Supported sitting with pillows
-- Different textures to explore safely`
+        developmentGuidance = `**Motor development ${childContext.name} (${childContext.ageDisplay}):**
+- Rolling: both directions by 6 months
+- Sitting: supported 4-5 months, independent 6-7 months
+- Grasp: palmar to pincer progression
+- Babbling: consonant sounds 4-6 months
+- Solid readiness: head control, sitting, interest in food`
       } else if (childContext.ageMonths <= 12) {
-        developmentGuidance = `**Development for ${childContext.name} at ${childContext.ageDisplay}:**
-- Sitting independently
-- Crawling or moving around
-- Pulling to stand
-- First words may appear
-- Responding to their name
-- Playing peek-a-boo and pat-a-cake
-
-**Engaging activities for ${childContext.name}:**
-- Stacking cups and soft blocks
-- Push-and-pull toys for cruising
-- Simple cause-and-effect toys (pop-up toys)
-- Board books with simple pictures
-- Music and dancing together
-- Hide-and-seek games`
+        developmentGuidance = `**Developmental assessment ${childContext.name} (${childContext.ageDisplay}):**
+- Gross motor: crawling 7-9 months, standing 9-12 months
+- Fine motor: pincer grasp 9-10 months
+- Language: first words 10-12 months, responds to name
+- Cognitive: object permanence 8-10 months
+- Social: stranger anxiety 6-12 months normal`
       } else {
-        developmentGuidance = `**Development for ${childContext.name} at ${childContext.ageDisplay}:**
-- Walking independently or with support
-- Vocabulary growth (10+ words by 18 months)
-- Following simple instructions
-- Showing independence and preferences
-- Climbing and exploring actively
-
-**Fun activities for ${childContext.name}:**
-- Shape sorters and simple puzzles
-- Crayons and large paper for scribbling
-- Playground visits (slides, swings, climbing)
-- Pretend play with dolls or stuffed animals
-- Simple songs with actions
-- Building with blocks or Duplo`
+        developmentGuidance = `**Toddler milestones ${childContext.name} (${childContext.ageDisplay}):**
+- Mobility: independent walking by 15 months
+- Language: 50+ words by 24 months, 2-word phrases
+- Motor skills: tower of 3-4 blocks, scribbling
+- Cognitive: pretend play, following 2-step commands
+- Social: parallel play, emotional regulation developing`
       }
 
-      response = `Development questions show how much you care about ${childContext.name}—that's wonderful! 😊
+      response = `${developmentGuidance}
 
-${developmentGuidance}
-
-**Important reminder:** Every child develops at their own unique pace! Some babies crawl early, others skip it entirely. Some talk early, others focus on physical skills first. ${childContext.name} is following their own perfect timeline.
-
-**Supporting ${childContext.name}'s development:**
-- Lots of loving interaction and talking
-- Age-appropriate toys and safe exploration
-- Reading together daily
-- Tummy time (if under 12 months)
-- Celebrating every small progress!
-
-Contact your pediatrician if you have specific concerns about ${childContext.name}'s development—they can provide personalized guidance.
-
-What else can I help with for ${childContext.name}?`
+Reference ranges based on CDC/AAP guidelines. Schedule developmental screening if concerns about ${childContext.name}'s progress.`
     }
     // Health and safety questions
     else if (
@@ -565,59 +594,56 @@ What else can I help with for ${childContext.name}?`
       queryLower.includes('symptoms')
     ) {
       console.log('🏥 Detected health-related query:', query)
-      response = `I see you're concerned about ${childContext.name}'s health—that shows what a caring parent you are! 😊
+      response = `**Health parameters ${childContext.name} (${childContext.ageDisplay}):**
+- Normal temperature: 36.1-37.2°C (97-99°F)
+- Fever definition: >38°C (100.4°F) - contact pediatrician
+- ${childContext.ageMonths <= 3 ? 'Any fever in infants <3 months requires immediate medical evaluation' : 'Monitor for associated symptoms with fever episodes'}
 
-**General health guidance for ${childContext.name} at ${childContext.ageDisplay}:**
-- Normal temperature: 98.6°F (100.4°F+ is fever, contact pediatrician)
-- Common concerns: teething, minor colds, growth spurts
-- ${childContext.ageMonths <= 6 ? 'Newborns: Watch for feeding changes, unusual fussiness, fever' : 'Watch for changes in appetite, sleep, or behavior'}
+**Age-specific concerns:**
+${childContext.ageMonths <= 6 ? '- Feeding changes, prolonged crying >3 hours\n- Respiratory distress, lethargy\n- Poor weight gain <15g/day' : ''}
+${childContext.ageMonths > 6 ? '- Developmental regression, persistent illness\n- Injury prevention priorities\n- Growth velocity monitoring' : ''}
 
-**When to contact your pediatrician:**
-- Fever (especially in babies under 3 months)
-- Persistent crying or unusual behavior  
-- Changes in eating or sleeping patterns
-- Any symptoms that worry you
-
-**Safety tips for ${childContext.name}'s age:**
-${childContext.ageMonths <= 6 ? '- Safe sleep practices (back sleeping, firm mattress)\n- Never leave unattended on elevated surfaces\n- Car seat safety' : ''}
-${childContext.ageMonths > 6 ? '- Childproofing as mobility increases\n- Small object choking hazards\n- Stair gates and outlet covers' : ''}
-
-Trust your instincts—you know ${childContext.name} best! When in doubt, your pediatrician is always the best resource.
-
-What else can I help with for ${childContext.name}?`
+Contact pediatrician for medical assessment of ${childContext.name}'s specific symptoms.`
     }
     // General/catch-all response
     else {
       console.log('❓ Using general response for query:', query)
-      response = `Hi! I'm MilestoneBot, your parenting sidekick! I'm here to help with ${childContext.name}'s care and development. 😊
+      response = `MilestoneBot provides evidence-based guidance for ${childContext.name} at ${childContext.ageMonths} months using AAP/WHO/CDC clinical standards.
 
-**I can provide guidance on:**
-- Sleep routines and challenges
-- Feeding and nutrition (breast, bottle, solids)
-- Development milestones and activities  
-- General health and safety topics
-- Parenting support and encouragement
+**Clinical assessments available:**
+- Developmental milestone tracking and screening
+- Nutritional requirements and feeding protocols  
+- Sleep medicine recommendations
+- Health parameter monitoring
+- Safety risk assessment
 
-**For ${childContext.name} at ${childContext.ageDisplay}**, I focus on age-appropriate advice that fits their current developmental stage.
+**For ${childContext.name} (${childContext.ageDisplay}):**
+Current focus areas include age-appropriate developmental expectations, nutritional needs, and safety protocols.
 
-**For this specific question about ${childContext.name}**, I'd recommend:
-1. **Your pediatrician** for personalized medical guidance
-2. **Trusted resources** like AAP (American Academy of Pediatrics)
-3. **Your parental instincts**—you know ${childContext.name} best!
+For diagnostic concerns or medical evaluation, consult your pediatrician for ${childContext.name}.`
+    }
 
-Remember, every child is unique, and parenting looks different for every family. You're doing an amazing job with ${childContext.name}! ❤️
-
-What else can I help with for ${childContext.name}?`
+    // Validate and potentially truncate fallback response
+    const validation = this.validateResponseQuality(response)
+    if (validation.needsTruncation) {
+      response = this.truncateResponseSmart(response, 150)
     }
 
     return {
       content: response,
       responseType: 'local',
-      confidenceScore: 0.85,
+      confidenceScore: validation.qualityScore,
       emergencyDetected: isEmergency,
-      safetyFlags: { source: 'enhanced_fallback', category: 'comprehensive_guidance' },
+      safetyFlags: { 
+        source: 'professional_fallback', 
+        category: 'evidence_based_guidance',
+        qualityValidation: validation
+      },
       processingTimeMs: Date.now() - startTime,
-      childContextUsed: this.compressChildContext(childContext)
+      childContextUsed: this.compressChildContext(childContext),
+      wordCount: validation.wordCount,
+      professionalTone: validation.professionalTone,
+      evidenceCitations: validation.evidenceCitations
     }
   }
 
@@ -703,7 +729,15 @@ What else can I help with for ${childContext.name}?`
 
       await this.incrementUsageTracking(userId, true, costCents, response.usage.total_tokens)
 
-      const content = response.choices[0]?.message.content || 'Sorry, I could not generate a response.'
+      let content = response.choices[0]?.message.content || 'Sorry, I could not generate a response.'
+      
+      // Validate response quality
+      const validation = this.validateResponseQuality(content)
+      
+      // Truncate if necessary while preserving important information
+      if (validation.needsTruncation) {
+        content = this.truncateResponseSmart(content, 150)
+      }
 
       return {
         content,
@@ -712,10 +746,16 @@ What else can I help with for ${childContext.name}?`
         tokensUsed: response.usage.total_tokens,
         costCents,
         processingTimeMs: Date.now() - startTime,
-        confidenceScore: 0.85, // Default confidence for LLM responses
+        confidenceScore: validation.qualityScore,
         emergencyDetected: false,
-        safetyFlags: { model: MODELS[model].name },
-        childContextUsed: compressedContext
+        safetyFlags: { 
+          model: MODELS[model].name,
+          qualityValidation: validation
+        },
+        childContextUsed: compressedContext,
+        wordCount: validation.wordCount,
+        professionalTone: validation.professionalTone,
+        evidenceCitations: validation.evidenceCitations
       }
     } catch (error) {
       console.error(`Error with ${model} model:`, error)

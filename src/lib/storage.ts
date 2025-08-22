@@ -186,29 +186,16 @@ export const initializeStorage = async () => {
     const bucketExists = buckets?.some(bucket => bucket.name === STORAGE_BUCKET)
     
     if (!bucketExists) {
-      console.log(`Creating storage bucket: ${STORAGE_BUCKET}`)
-      const { error } = await supabase.storage.createBucket(STORAGE_BUCKET, {
-        public: true,
-        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'],
-        fileSizeLimit: 5 * 1024 * 1024, // 5MB
-      })
+      console.log(`Storage bucket ${STORAGE_BUCKET} not found.`)
+      console.log('Note: Storage bucket creation requires admin privileges in Supabase.')
+      console.log('Please create the bucket manually in Supabase Dashboard:')
+      console.log('1. Go to Storage section in Supabase Dashboard')
+      console.log('2. Click "New bucket"')
+      console.log(`3. Name it "${STORAGE_BUCKET}"`)
+      console.log('4. Set it as "Public bucket"')
       
-      if (error) {
-        console.error('Error creating storage bucket:', error)
-        
-        // If bucket creation fails, try without restrictions
-        console.log('Trying to create bucket with minimal configuration...')
-        const { error: simpleError } = await supabase.storage.createBucket(STORAGE_BUCKET, {
-          public: true
-        })
-        
-        if (simpleError) {
-          console.error('Failed to create bucket even with simple config:', simpleError)
-          return false
-        }
-      }
-      
-      console.log('Storage bucket created successfully')
+      // Don't fail the app, just return false to indicate storage is not available
+      return false
     } else {
       console.log(`Storage bucket ${STORAGE_BUCKET} already exists`)
     }

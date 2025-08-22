@@ -187,7 +187,7 @@ export class AnyCrawlClient {
 
 // Create singleton instance with environment variables
 export const anyCrawlClient = new AnyCrawlClient({
-  apiKey: process.env.VITE_ANYCRAWL_API_KEY || '',
+  apiKey: import.meta.env.VITE_ANYCRAWL_API_KEY || '',
   timeout: 45000
 })
 

@@ -34,21 +34,18 @@ export interface UserContentPreferences {
 
 export class ContentService {
   
-  // Main method to get content for a child's current age and selected topic
+  // Main method to get top content for a topic (simplified - no age filtering)
   async getContentForChild(
     topic: string, 
     childAgeInMonths: number, 
     filters?: ContentFilters
   ): Promise<TopicContent[]> {
-    const ageRange = this.getAgeRangeForChild(childAgeInMonths)
-    
-    console.log(`📖 Getting content for ${topic}, age ${childAgeInMonths} months (${ageRange})`)
+    console.log(`📖 Getting top content for topic: ${topic}`)
     
     let query = supabase
       .from('fresh_topic_content')
       .select('*')
       .eq('topic', topic)
-      .eq('age_range', ageRange)
     
     // Apply quality filter
     if (filters?.minQuality !== undefined) {
@@ -76,7 +73,7 @@ export class ContentService {
     const { data, error } = await query
       .order('quality_score', { ascending: false })
       .order('publication_date', { ascending: false })
-      .limit(20)
+      .limit(12) // Show only top 12 articles per topic
     
     if (error) {
       console.error('Failed to fetch content:', error)
@@ -290,18 +287,8 @@ export class ContentService {
   
   // Helper methods
   private getAgeRangeForChild(ageInMonths: number): string {
-    // For first year: monthly ranges
-    if (ageInMonths < 12) {
-      const nextMonth = ageInMonths + 1
-      return `${ageInMonths}-${nextMonth}_months`
-    }
-    
-    // For older children: find appropriate semester range
-    const ageRangeEntries = Object.entries(AGE_RANGES).filter(([key]) => 
-      key.includes('-') && !key.match(/^\d+-\d+_months$/)
-    )
-    
-    for (const [range, config] of ageRangeEntries) {
+    // Find the appropriate age range from AGE_RANGES
+    for (const [range, config] of Object.entries(AGE_RANGES)) {
       if (ageInMonths >= config.min && ageInMonths < config.max) {
         return range
       }

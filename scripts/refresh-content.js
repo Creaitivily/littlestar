@@ -144,7 +144,7 @@ class AnyCrawlClient {
   }
 }
 
-// Content refresh logic
+// Content refresh logic - Comprehensive approach
 async function refreshAllContent() {
   const anyCrawl = new AnyCrawlClient(ANYCRAWL_API_KEY);
   const topics = Object.keys(SCRAPING_TARGETS);
@@ -153,7 +153,7 @@ async function refreshAllContent() {
   let successfulRefreshes = 0;
   let failedRefreshes = 0;
   
-  console.log(`🚀 Starting refresh for ${topics.length} topics × ${AGE_RANGES.length} age ranges`);
+  console.log(`🚀 Starting comprehensive refresh for ${topics.length} topics (targeting 50 articles each)`);
   
   // Get current refresh cycle
   const { data: currentCycleData } = await supabase.rpc('get_current_refresh_cycle');
@@ -164,17 +164,30 @@ async function refreshAllContent() {
   await supabase.rpc('cleanup_old_content');
   
   for (const topic of topics) {
-    for (const ageRange of AGE_RANGES) {
-      try {
-        console.log(`📖 Refreshing ${topic}/${ageRange}...`);
+    try {
+      console.log(`📖 Refreshing ${topic} (targeting 50 articles)...`);
+      
+      const topicConfig = SCRAPING_TARGETS[topic];
+      const allArticles = [];
+      const processedUrls = new Set();
+      
+      // Get existing URLs to avoid duplicates
+      const { data: existingContent } = await supabase
+        .from('topic_content')
+        .select('url')
+        .eq('topic', topic)
+        .eq('is_active', true);
+      
+      existingContent?.forEach(item => processedUrls.add(item.url));
+      
+      // Search with multiple queries to get variety
+      for (const baseQuery of topicConfig.searchQueries) {
+        console.log(`🔎 Searching: "${baseQuery}"`);
         
-        const topicConfig = SCRAPING_TARGETS[topic];
-        const searchQuery = `${topicConfig.searchQueries[0]} ${ageRange.replace('_', ' ')}`;
-        
-        // Search for content
         const searchResults = await anyCrawl.search({
-          query: searchQuery,
-          limit: 5
+          query: baseQuery,
+          limit: 15, // Get 15 results per query
+          engine: 'google'
         });
         
         if (searchResults.length === 0) {

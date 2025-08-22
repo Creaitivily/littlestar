@@ -14,10 +14,10 @@ export const SCRAPING_TARGETS = {
       'nutritionaustralia.org'
     ],
     searchQueries: [
-      'baby feeding guidelines',
-      'infant nutrition recommendations', 
-      'when to start solid foods',
-      'breastfeeding tips'
+      'best advice on baby feeding',
+      'expert tips for infant nutrition', 
+      'comprehensive guide to baby feeding',
+      'top recommendations for baby nutrition'
     ]
   },
   sleep_patterns: {
@@ -29,10 +29,10 @@ export const SCRAPING_TARGETS = {
       'healthychildren.org'
     ],
     searchQueries: [
-      'baby sleep patterns',
-      'infant sleep safety',
-      'sleep training methods',
-      'newborn sleep schedule'
+      'best advice on baby sleep',
+      'expert sleep training guidance',
+      'comprehensive baby sleep guide',
+      'top tips for infant sleep'
     ]
   },
   cognitive_development: {
@@ -44,10 +44,10 @@ export const SCRAPING_TARGETS = {
       'healthychildren.org'
     ],
     searchQueries: [
-      'infant cognitive development',
-      'baby brain development',
-      'early learning milestones',
-      'cognitive development stages'
+      'best advice on baby cognitive development',
+      'expert tips for brain development',
+      'comprehensive guide to baby learning',
+      'top cognitive development strategies'
     ]
   },
   physical_development: {
@@ -167,9 +167,105 @@ interface ContentItem {
   publication_date: string
   quality_score: number
   refresh_cycle: number
+  image_url?: string
+  reading_time?: number
+  author?: string
+  tags?: string[]
 }
 
 export class ContentScraperService {
+  
+  // New method: Scrape comprehensive content for a topic (50 articles)
+  async scrapeComprehensiveTopicContent(topic: string): Promise<ContentItem[]> {
+    console.log(`🔍 Scraping comprehensive content for ${topic} (targeting 50 articles)...`)
+    
+    try {
+      const searchQueries = SCRAPING_TARGETS[topic as keyof typeof SCRAPING_TARGETS]?.searchQueries || []
+      const trustedSources = SCRAPING_TARGETS[topic as keyof typeof SCRAPING_TARGETS]?.trustedSources || []
+      
+      const allArticles: ContentItem[] = []
+      const processedUrls = new Set<string>()
+      
+      // Get existing URLs to avoid duplicates
+      const { data: existingContent } = await supabase
+        .from('topic_content')
+        .select('url')
+        .eq('topic', topic)
+        .eq('is_active', true)
+      
+      existingContent?.forEach(item => processedUrls.add(item.url))
+      
+      // Search with multiple queries to get variety
+      for (const baseQuery of searchQueries) {
+        console.log(`🔎 Searching: "${baseQuery}"`)
+        
+        const searchResults = await anyCrawlClient.search({
+          query: baseQuery,
+          limit: 15, // Get 15 results per query
+          engine: 'google'
+        })
+        
+        // Process each search result
+        for (const result of searchResults) {
+          if (processedUrls.has(result.url) || allArticles.length >= 50) {
+            continue
+          }
+          
+          try {
+            // Scrape the full article content
+            const scrapedContent = await anyCrawlClient.scrape(result.url)
+            
+            if (scrapedContent && scrapedContent.content) {
+              // Extract image from content
+              const imageUrl = this.extractImageFromContent(scrapedContent.content)
+              
+              // Calculate quality score
+              const qualityScore = this.calculateQualityScore(scrapedContent, trustedSources)
+              
+              // Skip low quality content
+              if (qualityScore < 0.4) continue
+              
+              const article: ContentItem = {
+                topic,
+                age_range: 'all', // Simplified - no age restrictions
+                title: scrapedContent.title || result.title || 'Untitled',
+                url: scrapedContent.url || result.url,
+                content_summary: this.generateSummary(scrapedContent.content),
+                source_domain: new URL(scrapedContent.url || result.url).hostname.replace('www.', ''),
+                publication_date: scrapedContent.publishedDate || new Date().toISOString().split('T')[0],
+                quality_score: qualityScore,
+                refresh_cycle: 1,
+                image_url: imageUrl,
+                reading_time: this.estimateReadingTime(scrapedContent.content),
+                author: this.extractAuthor(scrapedContent.content),
+                tags: this.extractTags(topic, scrapedContent.content)
+              }
+              
+              allArticles.push(article)
+              processedUrls.add(result.url)
+              
+              console.log(`✅ Scraped: ${article.title} (Quality: ${qualityScore.toFixed(2)})`)
+              
+              // Rate limiting
+              await this.delay(2000)
+            }
+          } catch (error) {
+            console.error(`❌ Failed to scrape ${result.url}:`, error)
+          }
+        }
+        
+        // Delay between queries
+        await this.delay(3000)
+      }
+      
+      console.log(`📊 Scraped ${allArticles.length} articles for ${topic}`)
+      return allArticles.slice(0, 50) // Ensure max 50 articles
+      
+    } catch (error) {
+      console.error(`💥 Failed to scrape comprehensive content for ${topic}:`, error)
+      return []
+    }
+  }
   
   async scrapeTopicContent(
     topic: string, 
@@ -355,36 +451,154 @@ export class ContentScraperService {
     }
   }
   
-  private calculateQualityScore(content: ScrapedContent, topic: string): number {
+  // Helper methods for comprehensive scraping
+  private extractImageFromContent(content: string): string | undefined {
+    try {
+      const $ = cheerio.load(content)
+      
+      // Look for main content images (not ads or icons)
+      const images = $('img').filter((i, el) => {
+        const src = $(el).attr('src') || ''
+        const alt = $(el).attr('alt') || ''
+        const className = $(el).attr('class') || ''
+        
+        // Skip small images, ads, icons
+        if (src.includes('icon') || src.includes('logo') || src.includes('ad') || 
+            className.includes('icon') || className.includes('logo') ||
+            alt.includes('icon') || alt.includes('logo')) {
+          return false
+        }
+        
+        // Prefer larger images
+        const width = parseInt($(el).attr('width') || '0')
+        const height = parseInt($(el).attr('height') || '0')
+        
+        return width >= 200 || height >= 200 || (!width && !height)
+      })
+      
+      if (images.length > 0) {
+        const firstImage = images.first()
+        let src = firstImage.attr('src') || firstImage.attr('data-src')
+        
+        if (src) {
+          // Handle relative URLs
+          if (src.startsWith('//')) {
+            src = 'https:' + src
+          } else if (src.startsWith('/')) {
+            // Would need the base URL, but we'll skip relative paths for now
+            return undefined
+          }
+          return src
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to extract image:', error)
+    }
+    
+    return undefined
+  }
+  
+  private estimateReadingTime(content: string): number {
+    const $ = cheerio.load(content)
+    const text = $.text()
+    const words = text.split(/\s+/).length
+    return Math.max(1, Math.ceil(words / 200)) // 200 words per minute
+  }
+  
+  private extractAuthor(content: string): string {
+    try {
+      const $ = cheerio.load(content)
+      
+      // Look for author in common locations
+      const authorSelectors = [
+        '[rel="author"]',
+        '.author',
+        '.byline',
+        '[class*="author"]',
+        'meta[name="author"]'
+      ]
+      
+      for (const selector of authorSelectors) {
+        const author = $(selector).first().text().trim()
+        if (author && author.length > 2 && author.length < 100) {
+          return author
+        }
+      }
+      
+      // Check meta tags
+      const metaAuthor = $('meta[name="author"]').attr('content')
+      if (metaAuthor) return metaAuthor
+      
+    } catch (error) {
+      console.warn('Failed to extract author:', error)
+    }
+    
+    return 'Expert'
+  }
+  
+  private extractTags(topic: string, content: string): string[] {
+    const topicConfig = SCRAPING_TARGETS[topic as keyof typeof SCRAPING_TARGETS]
+    if (!topicConfig) return []
+    
+    const tags: string[] = [topic.replace('_', ' ')]
+    const contentLower = content.toLowerCase()
+    
+    // Add relevant keywords as tags
+    for (const keyword of topicConfig.keywords) {
+      if (contentLower.includes(keyword.toLowerCase())) {
+        tags.push(keyword)
+      }
+    }
+    
+    return [...new Set(tags)].slice(0, 5) // Max 5 unique tags
+  }
+  
+  private calculateQualityScore(content: ScrapedContent, trustedSources: string[]): number {
     let score = 0.5 // Base score
     
-    // Domain authority (trusted sources get higher scores)
-    const topicConfig = SCRAPING_TARGETS[topic as keyof typeof SCRAPING_TARGETS]
-    if (topicConfig.trustedSources.some(source => content.url.includes(source))) {
-      score += 0.3
+    try {
+      const url = content.url || ''
+      const contentText = content.content || ''
+      const title = content.title || ''
+      
+      // Domain authority (trusted sources get higher scores)
+      for (const source of trustedSources) {
+        if (url.includes(source)) {
+          score += 0.3
+          break
+        }
+      }
+      
+      // Content length (longer articles tend to be more comprehensive)
+      const wordCount = contentText.split(/\s+/).length
+      if (wordCount > 500) score += 0.2
+      if (wordCount > 1000) score += 0.1
+      
+      // Title quality (avoid clickbait)
+      if (title.includes('!') || title.includes('?')) score -= 0.1
+      if (title.includes('AMAZING') || title.includes('SHOCKING')) score -= 0.2
+      
+      // Has images
+      if (this.extractImageFromContent(contentText)) {
+        score += 0.1
+      }
+      
+      // Published date (prefer recent content)
+      if (content.publishedDate) {
+        const publishDate = new Date(content.publishedDate)
+        const monthsOld = (Date.now() - publishDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
+        if (monthsOld < 12) score += 0.1 // Content less than 1 year old
+      }
+      
+    } catch (error) {
+      console.warn('Quality score calculation failed:', error)
     }
     
-    // Content length (longer articles generally better)
-    const wordCount = content.content.split(/\s+/).length
-    if (wordCount > 500) score += 0.1
-    if (wordCount > 1000) score += 0.1
-    
-    // Has publication date
-    if (content.publishedDate) score += 0.1
-    
-    // Title quality
-    if (content.title && content.title.length > 20 && content.title.length < 100) {
-      score += 0.1
-    }
-    
-    // Keyword relevance
-    const text = `${content.title} ${content.content}`.toLowerCase()
-    const relevantKeywords = topicConfig.keywords.filter(keyword => 
-      text.includes(keyword.toLowerCase())
-    )
-    score += Math.min(relevantKeywords.length * 0.05, 0.2)
-    
-    return Math.min(score, 1.0)
+    return Math.min(Math.max(score, 0), 1) // Clamp between 0-1
+  }
+  
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
   }
   
   private async getCurrentRefreshCycle(): Promise<number> {
@@ -392,10 +606,6 @@ export class ContentScraperService {
       .rpc('get_current_refresh_cycle')
     
     return data || 0
-  }
-  
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
   }
   
   // Store scraped content in database

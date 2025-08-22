@@ -67,7 +67,7 @@ const contentCategories: ContentCategory[] = [
   },
   {
     id: 'physical_development',
-    name: 'Motor Skills',
+    name: 'Physical Growth',
     icon: Activity,
     description: 'Physical milestones and motor skill development',
     color: 'peach',
@@ -75,7 +75,7 @@ const contentCategories: ContentCategory[] = [
   },
   {
     id: 'social_emotional',
-    name: 'Emotions & Social',
+    name: 'Social & Emotional',
     icon: Heart,
     description: 'Emotional development and social skills',
     color: 'sage',
@@ -88,30 +88,6 @@ const contentCategories: ContentCategory[] = [
     description: 'Medical care, safety, and health monitoring',
     color: 'peach',
     subcategories: ['vaccinations', 'illness', 'safety', 'first aid', 'checkups']
-  },
-  {
-    id: 'activities_play',
-    name: 'Activities & Play',
-    icon: Baby,
-    description: 'Age-appropriate activities and play ideas',
-    color: 'honey',
-    subcategories: ['sensory play', 'toys', 'activities', 'tummy time', 'reading']
-  },
-  {
-    id: 'behavior_discipline',
-    name: 'Behavior & Discipline',
-    icon: MessageSquare,
-    description: 'Behavior management and positive discipline',
-    color: 'mint',
-    subcategories: ['discipline', 'tantrums', 'boundaries', 'behavior patterns']
-  },
-  {
-    id: 'language_communication',
-    name: 'Speech & Language',
-    icon: Users,
-    description: 'Language development and communication skills',
-    color: 'sage',
-    subcategories: ['speech', 'language', 'babbling', 'communication', 'vocabulary']
   }
 ]
 
@@ -121,7 +97,7 @@ interface ContentCurationSystemProps {
 }
 
 export function ContentCurationSystem({ selectedChild, className }: ContentCurationSystemProps) {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['feeding_nutrition'])
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [contentItems, setContentItems] = useState<TopicContent[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -131,7 +107,11 @@ export function ContentCurationSystem({ selectedChild, className }: ContentCurat
   useEffect(() => {
     if (selectedChild?.birth_date) {
       const age = calculateChildAgeInMonths(selectedChild.birth_date)
+      console.log(`Child age calculated: ${age} months from birth date ${selectedChild.birth_date}`)
       setChildAgeInMonths(age)
+    } else {
+      console.log('No child selected, defaulting to 3 months for demo')
+      setChildAgeInMonths(3) // Default to 3 months if no child selected
     }
   }, [selectedChild])
 
@@ -142,8 +122,13 @@ export function ContentCurationSystem({ selectedChild, className }: ContentCurat
   }, [selectedCategories, childAgeInMonths])
 
   const loadContent = async () => {
-    if (!selectedCategories.length || childAgeInMonths < 0) return
+    if (!selectedCategories.length || childAgeInMonths < 0) {
+      console.log('No categories selected or invalid child age, skipping content load')
+      setContentItems([])
+      return
+    }
     
+    console.log(`Loading content for categories: ${selectedCategories.join(', ')}`)
     setLoading(true)
     try {
       const allContent: TopicContent[] = []
@@ -151,16 +136,26 @@ export function ContentCurationSystem({ selectedChild, className }: ContentCurat
       // Load content for each selected topic
       for (const topic of selectedCategories) {
         try {
+          console.log(`Fetching content for topic: ${topic}`)
           const topicContent = await contentService.getContentForChild(
             topic,
             childAgeInMonths,
-            { minQuality: 0.4 }
+            { minQuality: 0.3 } // Lower threshold to ensure we get content
           )
-          allContent.push(...topicContent.map(item => ({ ...item, topic })))
+          console.log(`Got ${topicContent.length} articles for ${topic}`)
+          
+          // Ensure topic is set on each item
+          const itemsWithTopic = topicContent.map(item => ({ 
+            ...item, 
+            topic: item.topic || topic // Use existing topic or fallback to current topic
+          }))
+          allContent.push(...itemsWithTopic)
         } catch (error) {
           console.error(`Failed to load content for ${topic}:`, error)
         }
       }
+      
+      console.log(`Total content loaded: ${allContent.length} articles`)
       
       // Sort by quality score and publication date
       allContent.sort((a, b) => {
@@ -309,9 +304,27 @@ export function ContentCurationSystem({ selectedChild, className }: ContentCurat
             return (
               <Card key={item.id} className="group hover:shadow-lg transition-all border-sage-200 hover:border-sage-300">
                 <div className="relative">
-                  <div className="w-full h-48 bg-gradient-to-br from-sage-100 to-honey-100 rounded-t-lg flex items-center justify-center">
-                    <ContentIcon className="w-16 h-16 text-sage-400" />
-                  </div>
+                  {item.image_url ? (
+                    <div className="w-full h-48 rounded-t-lg overflow-hidden">
+                      <img 
+                        src={item.image_url} 
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to placeholder if image fails to load
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div className="w-full h-48 bg-gradient-to-br from-sage-100 to-honey-100 rounded-t-lg flex items-center justify-center" style={{display: 'none'}}>
+                        <ContentIcon className="w-16 h-16 text-sage-400" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-48 bg-gradient-to-br from-sage-100 to-honey-100 rounded-t-lg flex items-center justify-center">
+                      <ContentIcon className="w-16 h-16 text-sage-400" />
+                    </div>
+                  )}
                   
                   <div className="absolute top-3 right-3">
                     <Badge variant="secondary" className="bg-white/90 text-gray-700">
@@ -361,7 +374,7 @@ export function ContentCurationSystem({ selectedChild, className }: ContentCurat
 
                   <Button 
                     className="w-full bg-sage-500 hover:bg-sage-600 text-white"
-                    onClick={() => window.open(item.url, '_blank')}
+                    onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Read Article
@@ -377,9 +390,13 @@ export function ContentCurationSystem({ selectedChild, className }: ContentCurat
         <Card className="text-center py-8 border-sage-200">
           <CardContent>
             <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">No content found</h3>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">
+              {selectedCategories.length === 0 ? 'Select topics to explore' : 'No content found'}
+            </h3>
             <p className="text-gray-500">
-              Try adjusting your search terms or selecting different categories.
+              {selectedCategories.length === 0 
+                ? 'Click on the topics above to see curated articles for each category.'
+                : 'Try adjusting your search terms or selecting different categories.'}
             </p>
           </CardContent>
         </Card>

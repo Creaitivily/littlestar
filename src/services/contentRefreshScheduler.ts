@@ -116,18 +116,24 @@ export class ContentRefreshScheduler {
     
     const { data: staleContent } = await supabase
       .from('topic_content')
-      .select('topic, age_range, COUNT(*) as count')
+      .select('topic, age_range')
       .eq('is_active', true)
       .lt('last_refreshed', new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString()) // 45 days old
-      .group('topic, age_range')
     
     if (staleContent && staleContent.length > 0) {
       console.log(`⚠️ Found stale content in ${staleContent.length} topic/age combinations`)
       
+      const groupedContent: Record<string, number> = {}
       for (const item of staleContent) {
-        if (item.count < 8) { // Less than minimum threshold
-          console.log(`🚨 Emergency refresh needed for ${item.topic}/${item.age_range}`)
-          await this.emergencyRefresh(item.topic, item.age_range)
+        const key = `${item.topic}/${item.age_range}`
+        groupedContent[key] = (groupedContent[key] || 0) + 1
+      }
+      
+      for (const [key, count] of Object.entries(groupedContent)) {
+        if (count < 8) { // Less than minimum threshold
+          const [topic, ageRange] = key.split('/')
+          console.log(`🚨 Emergency refresh needed for ${topic}/${ageRange}`)
+          await this.emergencyRefresh(topic, ageRange)
         }
       }
     } else {
@@ -298,26 +304,16 @@ export class ContentRefreshScheduler {
   }
 
   async getContentStats(): Promise<any> {
-    const { data: contentStats } = await supabase
+    const { data: contentData } = await supabase
       .from('topic_content')
-      .select(`
-        topic,
-        age_range,
-        count(*),
-        avg(quality_score) as avg_quality,
-        max(last_refreshed) as last_refreshed
-      `)
+      .select('topic, age_range, quality_score, last_refreshed')
       .eq('is_active', true)
-      .group(['topic', 'age_range'])
     
-    const { data: totalStats } = await supabase
-      .from('topic_content')
-      .select('count(*)')
-      .eq('is_active', true)
-      .single()
+    const contentStats = contentData || []
+    const totalArticles = contentStats.length
     
     return {
-      totalArticles: totalStats?.count || 0,
+      totalArticles,
       byTopicAge: contentStats || [],
       lastSystemRefresh: await this.getLastSystemRefresh()
     }

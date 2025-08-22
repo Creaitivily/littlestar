@@ -6,8 +6,6 @@ import { Progress } from '@/components/ui/progress'
 import { 
   Database,
   RefreshCw,
-  Play,
-  Pause,
   BarChart3,
   Calendar,
   TrendingUp,
@@ -19,7 +17,7 @@ import {
   Users,
   Zap
 } from 'lucide-react'
-import { contentRefreshScheduler, type RefreshStats } from '@/services/contentRefreshScheduler'
+import { contentRefreshScheduler } from '@/services/contentRefreshScheduler'
 import { contentService } from '@/services/contentService'
 
 interface ContentStats {
@@ -31,9 +29,22 @@ interface ContentStats {
   lastRefresh: string | null
 }
 
+interface RefreshStats {
+  successfulRefreshes: number
+  failedRefreshes: number
+  articlesAdded: number
+  articlesRemoved: number
+  totalTopics: number
+  totalAgeRanges: number
+  errors: string[]
+}
+
 export function ContentManagement() {
   const [contentStats, setContentStats] = useState<ContentStats | null>(null)
-  const [refreshStatus, setRefreshStatus] = useState({ isRunning: false, currentStats: null })
+  const [refreshStatus, setRefreshStatus] = useState<{
+    isRunning: boolean
+    currentStats: RefreshStats | null
+  }>({ isRunning: false, currentStats: null })
   const [refreshHistory, setRefreshHistory] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { FileAttachment } from '@/components/ui/FileAttachment'
+import { MultiFileUpload } from '@/components/ui/MultiFileUpload'
 import { GooglePhotosPickerAdvanced } from '@/components/ui/GooglePhotosPickerAdvanced'
 import { uploadAttachmentFile } from '@/lib/storage'
 import { useAuth } from '@/contexts/AuthContext'
@@ -26,6 +27,8 @@ export function AddMemoryForm({ open, onOpenChange, onSuccess }: AddMemoryFormPr
   })
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const [filePreview, setFilePreview] = useState<string | null>(null)
+  const [attachedFiles, setAttachedFiles] = useState<any[]>([])
+  const [useMultiUpload, setUseMultiUpload] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [googlePhotosUrl, setGooglePhotosUrl] = useState<string>('')
   const [googlePhotosUrls, setGooglePhotosUrls] = useState<string[]>([])
@@ -49,9 +52,10 @@ export function AddMemoryForm({ open, onOpenChange, onSuccess }: AddMemoryFormPr
     
     try {
       let fileUrl = null
+      let attachmentUrls: string[] = []
       
-      // Upload file if attached
-      if (attachedFile && user) {
+      // Upload single file if attached (legacy support)
+      if (attachedFile && user && !useMultiUpload) {
         const { fileUrl: uploadedFileUrl, error: uploadError } = await uploadAttachmentFile(
           attachedFile,
           user.id,
@@ -67,11 +71,33 @@ export function AddMemoryForm({ open, onOpenChange, onSuccess }: AddMemoryFormPr
         }
       }
       
+      // Upload multiple files if using multi-upload
+      if (useMultiUpload && attachedFiles.length > 0 && user) {
+        for (const uploadedFile of attachedFiles) {
+          if (uploadedFile.status === 'completed') {
+            // File already uploaded via MultiFileUpload component
+            attachmentUrls.push(uploadedFile.url)
+          } else if (uploadedFile.status === 'pending') {
+            // Upload remaining files
+            const { fileUrl: uploadedFileUrl, error: uploadError } = await uploadAttachmentFile(
+              uploadedFile.file,
+              user.id,
+              'memory'
+            )
+            
+            if (!uploadError && uploadedFileUrl) {
+              attachmentUrls.push(uploadedFileUrl)
+            }
+          }
+        }
+      }
+      
       const { error } = await createMemory(selectedChild.id, {
         title: formData.title.trim(),
         date: formData.date,
         description: formData.description.trim(),
         attachment_url: fileUrl,
+        attachment_urls: attachmentUrls.length > 0 ? attachmentUrls : null,
         google_photos_url: googlePhotosUrl || null,
         google_photos_urls: googlePhotosUrls.length > 0 ? googlePhotosUrls : null
       })
@@ -90,6 +116,8 @@ export function AddMemoryForm({ open, onOpenChange, onSuccess }: AddMemoryFormPr
       })
       setAttachedFile(null)
       setFilePreview(null)
+      setAttachedFiles([])
+      setUseMultiUpload(false)
       setGooglePhotosUrl('')
       setGooglePhotosUrls([])
       onOpenChange(false)
@@ -157,20 +185,38 @@ export function AddMemoryForm({ open, onOpenChange, onSuccess }: AddMemoryFormPr
           
           <div className="space-y-4 pt-2">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium text-gray-700">Add Photo or Document</Label>
-              {selectedChild && (
-                <GooglePhotosPickerAdvanced
-                  childId={selectedChild.id}
-                  onPhotosSelected={(urls) => {
-                    setGooglePhotosUrls(urls)
-                    // Clear local file when Google Photos are selected
-                    if (urls.length > 0 && attachedFile) {
-                      setAttachedFile(null)
-                      setFilePreview(null)
-                    }
+              <Label className="text-sm font-medium text-gray-700">Add Photos or Documents</Label>
+              <div className="flex items-center gap-2">
+                {selectedChild && (
+                  <GooglePhotosPickerAdvanced
+                    childId={selectedChild.id}
+                    onPhotosSelected={(urls) => {
+                      setGooglePhotosUrls(urls)
+                      // Clear local files when Google Photos are selected
+                      if (urls.length > 0) {
+                        setAttachedFile(null)
+                        setFilePreview(null)
+                        setAttachedFiles([])
+                      }
+                    }}
+                  />
+                )}
+                <Button
+                  type="button"
+                  variant={useMultiUpload ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setUseMultiUpload(!useMultiUpload)
+                    // Clear existing selections when switching modes
+                    setAttachedFile(null)
+                    setFilePreview(null)
+                    setAttachedFiles([])
                   }}
-                />
-              )}
+                  className="text-xs"
+                >
+                  {useMultiUpload ? "Single File" : "Multiple Files"}
+                </Button>
+              </div>
             </div>
             
             {/* Show Google Photos if imported */}
@@ -223,21 +269,44 @@ export function AddMemoryForm({ open, onOpenChange, onSuccess }: AddMemoryFormPr
               </div>
             </div>
             
-            <FileAttachment
-              label="Upload from Device"
-              onFileSelect={(file, preview) => {
-                setAttachedFile(file)
-                setFilePreview(preview)
-                // Clear Google Photos when local file is selected
-                if (file) {
-                  setGooglePhotosUrls([])
-                }
-              }}
-              selectedFile={attachedFile}
-              previewUrl={filePreview}
-              accept="image/*,application/pdf,.doc,.docx,.txt"
-              maxSize={10}
-            />
+            {useMultiUpload ? (
+              <MultiFileUpload
+                onFilesChange={(files) => {
+                  setAttachedFiles(files)
+                  // Clear Google Photos when local files are selected
+                  if (files.length > 0) {
+                    setGooglePhotosUrls([])
+                  }
+                }}
+                accept="image/*,application/pdf,.doc,.docx,.txt"
+                maxSize={10}
+                maxFiles={5}
+                allowMultiple={true}
+                uploadFunction={async (file) => {
+                  if (user && selectedChild) {
+                    return await uploadAttachmentFile(file, user.id, 'memory')
+                  }
+                  return { url: null, error: new Error('User or child not selected') }
+                }}
+              />
+            ) : (
+              <FileAttachment
+                label="Upload from Device"
+                onFileSelect={(file, preview) => {
+                  setAttachedFile(file)
+                  setFilePreview(preview)
+                  // Clear Google Photos when local file is selected
+                  if (file) {
+                    setGooglePhotosUrls([])
+                    setAttachedFiles([])
+                  }
+                }}
+                selectedFile={attachedFile}
+                previewUrl={filePreview}
+                accept="image/*,application/pdf,.doc,.docx,.txt"
+                maxSize={10}
+              />
+            )}
           </div>
           
           <div className="flex gap-2 pt-4">
@@ -255,6 +324,8 @@ export function AddMemoryForm({ open, onOpenChange, onSuccess }: AddMemoryFormPr
                 })
                 setAttachedFile(null)
                 setFilePreview(null)
+                setAttachedFiles([])
+                setUseMultiUpload(false)
                 setGooglePhotosUrl('')
                 setGooglePhotosUrls([])
                 onOpenChange(false)

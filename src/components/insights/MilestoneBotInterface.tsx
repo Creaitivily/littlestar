@@ -38,7 +38,7 @@ export function MilestoneBotInterface({ className, selectedChild }: MilestoneBot
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: `Hi there! 🐝 I'm MilestoneBot, your friendly parenting companion! I'm here to help you navigate your child's development journey with expert guidance, tips, and personalized advice. What would you like to know about today?`,
+      content: `I understand that parenting questions can be concerning. I provide evidence-based guidance using AAP, WHO, and CDC standards for developmental milestones, nutrition, sleep patterns, and health. What can I help you with today?`,
       isBot: true,
       timestamp: new Date()
     }
@@ -100,7 +100,7 @@ export function MilestoneBotInterface({ className, selectedChild }: MilestoneBot
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: data.response || "I'm still learning! 🐝 Could you try rephrasing your question?",
+        content: data.response || "Unable to process query. Please rephrase your clinical question.",
         isBot: true,
         timestamp: new Date()
       }
@@ -110,7 +110,7 @@ export function MilestoneBotInterface({ className, selectedChild }: MilestoneBot
       console.error('MilestoneBot error:', error)
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "Oops! I'm having a tiny bee-sized hiccup. Please try again in a moment! 🐝",
+        content: "System temporarily unavailable. Please retry your clinical query.",
         isBot: true,
         timestamp: new Date()
       }
@@ -143,7 +143,7 @@ export function MilestoneBotInterface({ className, selectedChild }: MilestoneBot
     setMessages([
       {
         id: '1',
-        content: `Hi there! 🐝 I'm MilestoneBot, your friendly parenting companion! I'm here to help you navigate your child's development journey with expert guidance, tips, and personalized advice. What would you like to know about today?`,
+        content: `I understand that parenting questions can be concerning. I provide evidence-based guidance using AAP, WHO, and CDC standards for developmental milestones, nutrition, sleep patterns, and health. What can I help you with today?`,
         isBot: true,
         timestamp: new Date()
       }

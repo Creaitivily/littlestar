@@ -94,14 +94,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const setupStorage = async () => {
       const { success, error } = await testStorageAccess()
       if (!success) {
-        console.error('Storage access failed:', error)
+        console.warn('Storage access check failed:', error)
+        console.log('Storage features may be limited.')
         console.log('You can run manualStorageTest() in the browser console to debug storage issues')
       } else {
-        await initializeStorage()
+        const storageInitialized = await initializeStorage()
+        if (!storageInitialized) {
+          console.info('Storage bucket not available. File upload features will be disabled.')
+        }
       }
     }
     
-    setupStorage()
+    setupStorage().catch(err => {
+      console.warn('Storage setup failed:', err)
+      // Don't crash the app, just continue without storage
+    })
     
     // Make debug functions available globally
     if (typeof window !== 'undefined') {
@@ -312,6 +319,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             access_type: 'offline',
             prompt: 'consent',
           },
+          skipBrowserRedirect: false,
         },
       })
       
@@ -319,6 +327,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (error) {
         console.error('Google OAuth error details:', error)
+        // Provide more specific error messages
+        if (error.message?.includes('Invalid login credentials')) {
+          return { user: null, error: { ...error, message: 'Google authentication failed. Please ensure Google OAuth is properly configured.' } }
+        }
         return { user: null, error }
       }
       

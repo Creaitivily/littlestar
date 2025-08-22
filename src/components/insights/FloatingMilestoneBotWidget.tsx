@@ -48,7 +48,7 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: `Hi! I'm MilestoneBot, your warm and supportive parenting companion! 😊 I'm here to help with all your childcare questions—from feeding and sleep to development and health. I provide evidence-based guidance in a caring, jargon-free way. What would you like to know?`,
+      content: `I understand that parenting questions can be concerning. I provide evidence-based guidance using AAP, WHO, and CDC standards for developmental milestones, nutrition, sleep patterns, and health. What can I help you with today?`,
       isBot: true,
       timestamp: new Date()
     }
@@ -59,7 +59,7 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
     if (selectedChild) {
       setMessages([{
         id: '1',
-        content: `Hi! I'm MilestoneBot, your parenting sidekick! 😊 I'm here to help with ${selectedChild.name}'s care and development. From sleep challenges to feeding questions, developmental milestones to health concerns—I've got evidence-based guidance tailored just for ${selectedChild.name} at ${calculateAge(selectedChild.birth_date)}. What can I help you with today?`,
+        content: `I understand parenting concerns about ${selectedChild.name}'s development. I provide evidence-based guidance for children at ${calculateAge(selectedChild.birth_date)}, covering developmental milestones, nutrition, sleep patterns, and health using AAP/WHO/CDC standards. How can I help with ${selectedChild.name} today?`,
         isBot: true,
         timestamp: new Date()
       }])
@@ -98,10 +98,10 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
   }
 
   const quickPrompts = [
-    { icon: Baby, text: "Sleep training tips", topic: "sleep" },
-    { icon: Heart, text: "Developmental milestones", topic: "development" },
-    { icon: BookOpen, text: "Feeding guidance", topic: "nutrition" },
-    { icon: Sparkles, text: "Activity ideas", topic: "activities" }
+    { icon: Baby, text: "Sleep assessment", topic: "sleep" },
+    { icon: Heart, text: "Milestone evaluation", topic: "development" },
+    { icon: BookOpen, text: "Nutritional analysis", topic: "nutrition" },
+    { icon: Sparkles, text: "Growth tracking", topic: "growth" }
   ]
 
   const handleSendMessage = async () => {
@@ -111,7 +111,7 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
     if (!selectedChild) {
       const noChildMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "Hi there! 🐝 I'd love to help you with personalized advice, but I don't see any child profiles yet. Please add your child's information first, then I can give you age-appropriate guidance!",
+        content: "Child profile required for clinical assessment. Please add your child's information first to receive age-specific developmental guidance and health parameter analysis.",
         isBot: true,
         timestamp: new Date()
       }
@@ -181,8 +181,8 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: error instanceof Error && error.message.includes('limit') 
-          ? "I've reached my daily chat limit! 🐝 Please try again tomorrow or check your usage in settings."
-          : "Oops! I'm having a tiny bee-sized hiccup. Please try again in a moment! 🐝",
+          ? "Daily usage limit reached. Service resumes tomorrow or check usage settings for details."
+          : "Service temporarily unavailable. Please retry your request momentarily.",
         isBot: true,
         timestamp: new Date()
       }
@@ -206,7 +206,7 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
       if (!selectedChild) {
         const noChildMessage: Message = {
           id: (Date.now() + 1).toString(),
-          content: "Hi there! 🐝 I'd love to help you with personalized advice, but I don't see any child profiles yet. Please add your child's information first, then I can give you age-appropriate guidance!",
+          content: "Child profile required for clinical assessment. Please add your child's information first to receive age-specific developmental guidance and health parameter analysis.",
           isBot: true,
           timestamp: new Date()
         }
@@ -274,8 +274,8 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
           content: error instanceof Error && error.message.includes('limit') 
-            ? "I've reached my daily chat limit! 🐝 Please try again tomorrow or check your usage in settings."
-            : "Oops! I'm having a tiny bee-sized hiccup. Please try again in a moment! 🐝",
+            ? "Daily usage limit reached. Service resumes tomorrow or check usage settings for details."
+            : "Service temporarily unavailable. Please retry your request momentarily.",
           isBot: true,
           timestamp: new Date()
         }
@@ -322,7 +322,7 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
                   MilestoneBot
                   <Sparkles className="w-3 h-3 text-honey-300" />
                 </CardTitle>
-                <p className="text-sage-100 text-xs">Your AI parenting companion</p>
+                <p className="text-sage-100 text-xs">Clinical child development AI</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -348,7 +348,7 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
           {selectedChild && !isMinimized && (
             <div className="mt-2 p-2 bg-sage-600/30 rounded-lg">
               <p className="text-xs text-sage-100">
-                💝 Personalized for <strong>{selectedChild.name}</strong> 
+                Clinical assessment for <strong>{selectedChild.name}</strong> 
                 <span className="ml-1">({calculateAge(selectedChild.birth_date)})</span>
               </p>
             </div>
@@ -453,7 +453,7 @@ export function FloatingMilestoneBotWidget({ className }: FloatingMilestoneBotWi
                 </Button>
               </div>
               <p className="text-xs text-gray-500 mt-1 text-center">
-                Educational information only. Consult healthcare professionals.
+                Clinical guidance only. Not a substitute for professional medical care.
               </p>
             </div>
           </CardContent>
