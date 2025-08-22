@@ -42,6 +42,9 @@ function App() {
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           
+          {/* OAuth callback route */}
+          <Route path="/auth/google/callback" element={<Navigate to="/dashboard" replace />} />
+          
           {/* Redirect root to home page */}
           <Route path="/" element={<Navigate to="/home" replace />} />
           

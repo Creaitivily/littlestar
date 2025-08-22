@@ -67,20 +67,20 @@ export function GooglePhotosPickerAdvanced({
       return
     }
 
-    // Check if Google Client ID is configured
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-    if (!clientId || clientId === 'your-google-client-id-here') {
-      handleError('Google Photos integration is not configured. Please set up your Google Client ID in the environment variables.')
+    // Check configuration
+    const config = googlePhotosService.getConfigStatus()
+    if (!config.hasClientId || !config.hasApiKey) {
+      handleError('Google Photos integration is not configured. Please add VITE_GOOGLE_CLIENT_ID and VITE_GOOGLE_API_KEY to your environment variables.')
       return
     }
 
     resetState()
     
     try {
-      // Step 1: Authentication
+      // Step 1: Authentication & Initialization
       setState(prev => ({ ...prev, idle: false, authenticating: true }))
       
-      // Step 2: Start picking process
+      // Step 2: Start picking process  
       setState(prev => ({ ...prev, authenticating: false, picking: true }))
       
       // Step 3: Upload photos
@@ -95,7 +95,7 @@ export function GooglePhotosPickerAdvanced({
       )
 
       if (uploadedUrls.length === 0) {
-        handleError('No photos were selected or uploaded')
+        handleError('No photos were selected or upload was cancelled')
         return
       }
 
@@ -198,7 +198,7 @@ export function GooglePhotosPickerAdvanced({
             {/* Instructions */}
             {state.idle && (
               <div className="text-sm text-gray-600 space-y-2">
-                {import.meta.env.VITE_GOOGLE_CLIENT_ID === 'your-google-client-id-here' ? (
+                {!googlePhotosService.getConfigStatus().hasClientId || !googlePhotosService.getConfigStatus().hasApiKey ? (
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded">
                     <h4 className="font-medium text-amber-800 mb-2">⚙️ Setup Required</h4>
                     <p className="text-amber-700 text-xs leading-relaxed">
@@ -206,12 +206,12 @@ export function GooglePhotosPickerAdvanced({
                     </p>
                     <ol className="text-xs text-amber-700 ml-4 mt-1 space-y-1">
                       <li>1. Create a Google Cloud project</li>
-                      <li>2. Enable Google Photos APIs</li>
-                      <li>3. Create OAuth2 credentials</li>
-                      <li>4. Add Client ID to .env.local</li>
+                      <li>2. Enable Google Picker API</li>
+                      <li>3. Create API Key and OAuth2 credentials</li>
+                      <li>4. Add VITE_GOOGLE_CLIENT_ID and VITE_GOOGLE_API_KEY to .env.local</li>
                     </ol>
                     <p className="text-xs text-amber-600 mt-2">
-                      See GOOGLE_SETUP.md for detailed instructions.
+                      Missing: {!googlePhotosService.getConfigStatus().hasClientId ? 'Client ID' : ''} {!googlePhotosService.getConfigStatus().hasApiKey ? 'API Key' : ''}
                     </p>
                   </div>
                 ) : (

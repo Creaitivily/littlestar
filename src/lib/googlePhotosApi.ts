@@ -1,324 +1,264 @@
-// Google Photos Picker API integration
-import { supabase } from './supabase'
+// Google Photos Picker API integration - Client-side implementation
+import { uploadAttachmentFile } from './storage'
 
-const GOOGLE_PHOTOS_API_BASE = 'https://photospicker.googleapis.com/v1'
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
-const REDIRECT_URI = `${window.location.origin}/auth/google/callback`
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY
 
 // Validate environment variables
 if (!CLIENT_ID) {
-  console.error('❌ VITE_GOOGLE_CLIENT_ID is not set in environment variables')
+  console.warn('⚠️ VITE_GOOGLE_CLIENT_ID is not set in environment variables')
 }
 
-// OAuth2 configuration
-const OAUTH_SCOPES = [
-  'photospicker.mediaitems.readonly',
-  'https://www.googleapis.com/auth/photoslibrary.readonly'
-]
-
-interface PickerSession {
-  id: string
-  pickerUri: string
-  mediaItemsSet?: boolean
+if (!API_KEY) {
+  console.warn('⚠️ VITE_GOOGLE_API_KEY is not set in environment variables')
 }
 
-interface PickedMediaItem {
-  id: string
-  mediaFile: {
+// Google Photos scopes
+const DISCOVERY_DOC = 'https://photospicker.googleapis.com/$discovery/rest?version=v1'
+const SCOPES = 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly'
+
+interface SelectedPhoto {
+  mediaItems: Array<{
+    id: string
     baseUrl: string
     filename: string
     mimeType: string
+  }>
+}
+
+declare global {
+  interface Window {
+    google: {
+      picker: {
+        PickerBuilder: any
+        PhotosPickerBuilder: any
+        ViewId: any
+        Action: any
+        Response: any
+      }
+      accounts: {
+        oauth2: {
+          initTokenClient: (config: any) => any
+        }
+      }
+      client: {
+        init: (config: any) => Promise<void>
+        load: (api: string, callback: () => void) => void
+      }
+    }
+    gapi: {
+      load: (api: string, callback: () => void) => void
+      client: {
+        init: (config: any) => Promise<void>
+      }
+    }
   }
 }
 
 export class GooglePhotosService {
+  private isInitialized = false
+  private tokenClient: any = null
   private accessToken: string | null = null
 
   constructor() {
-    // Check for stored access token
-    this.accessToken = localStorage.getItem('google_photos_token')
+    this.loadGoogleAPI()
   }
 
-  // Initialize OAuth2 flow
-  async authenticate(): Promise<boolean> {
-    try {
-      if (this.accessToken && await this.validateToken()) {
-        return true
-      }
-
-      // Start OAuth2 flow
-      const authUrl = this.buildAuthUrl()
-      
-      // Open popup for authentication
-      const popup = window.open(
-        authUrl,
-        'google-auth',
-        'width=500,height=600,scrollbars=yes'
-      )
-
-      return new Promise((resolve) => {
-        const checkAuth = setInterval(() => {
-          try {
-            if (popup?.closed) {
-              clearInterval(checkAuth)
-              // Check if token was received
-              const token = localStorage.getItem('google_photos_token')
-              this.accessToken = token
-              resolve(!!token)
-            }
-          } catch (error) {
-            // Cross-origin error means popup is still active
-          }
-        }, 1000)
-
-        // Timeout after 5 minutes
-        setTimeout(() => {
-          clearInterval(checkAuth)
-          popup?.close()
-          resolve(false)
-        }, 300000)
-      })
-    } catch (error) {
-      console.error('Authentication error:', error)
-      return false
-    }
-  }
-
-  // Create a picker session
-  async createSession(): Promise<PickerSession | null> {
-    if (!this.accessToken) {
-      throw new Error('Not authenticated')
-    }
-
-    try {
-      const response = await fetch(`${GOOGLE_PHOTOS_API_BASE}/sessions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          // Optional: Configure session settings
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error(`Session creation failed: ${response.statusText}`)
-      }
-
-      const session = await response.json()
-      return session
-    } catch (error) {
-      console.error('Session creation error:', error)
-      return null
-    }
-  }
-
-  // Poll session for completion
-  async pollSession(sessionId: string): Promise<boolean> {
-    if (!this.accessToken) {
-      throw new Error('Not authenticated')
-    }
-
-    let attempts = 0
-    const maxAttempts = 60 // 5 minutes with 5-second intervals
-
+  // Load Google APIs
+  private async loadGoogleAPI(): Promise<void> {
     return new Promise((resolve) => {
-      const poll = setInterval(async () => {
-        try {
-          const response = await fetch(`${GOOGLE_PHOTOS_API_BASE}/sessions/${sessionId}`, {
-            headers: {
-              'Authorization': `Bearer ${this.accessToken}`
-            }
-          })
-
-          if (!response.ok) {
-            clearInterval(poll)
-            resolve(false)
-            return
-          }
-
-          const session = await response.json()
-          
-          if (session.mediaItemsSet) {
-            clearInterval(poll)
-            resolve(true)
-            return
-          }
-
-          attempts++
-          if (attempts >= maxAttempts) {
-            clearInterval(poll)
-            resolve(false)
-          }
-        } catch (error) {
-          console.error('Polling error:', error)
-          clearInterval(poll)
-          resolve(false)
+      // Load Google Identity Services
+      const script1 = document.createElement('script')
+      script1.src = 'https://accounts.google.com/gsi/client'
+      script1.onload = () => {
+        // Load Google Picker API
+        const script2 = document.createElement('script')
+        script2.src = 'https://apis.google.com/js/api.js'
+        script2.onload = () => {
+          this.initializeAPI().then(() => resolve())
         }
-      }, 5000) // Poll every 5 seconds
+        document.head.appendChild(script2)
+      }
+      document.head.appendChild(script1)
     })
   }
 
-  // Get selected media items
-  async getSelectedItems(sessionId: string): Promise<PickedMediaItem[]> {
-    if (!this.accessToken) {
-      throw new Error('Not authenticated')
-    }
+  // Initialize Google APIs
+  private async initializeAPI(): Promise<void> {
+    if (this.isInitialized) return
 
-    try {
-      const response = await fetch(`${GOOGLE_PHOTOS_API_BASE}/mediaItems?sessionId=${sessionId}`, {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`
+    return new Promise((resolve) => {
+      window.gapi.load('client:picker', async () => {
+        if (!CLIENT_ID || !API_KEY) {
+          console.error('Google API credentials not configured')
+          resolve()
+          return
         }
-      })
 
-      if (!response.ok) {
-        throw new Error(`Failed to get media items: ${response.statusText}`)
+        try {
+          await window.gapi.client.init({
+            apiKey: API_KEY,
+            discoveryDocs: [DISCOVERY_DOC]
+          })
+
+          // Initialize OAuth2 token client
+          this.tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: SCOPES,
+            callback: (response: any) => {
+              if (response.access_token) {
+                this.accessToken = response.access_token
+              }
+            }
+          })
+
+          this.isInitialized = true
+        } catch (error) {
+          console.error('Failed to initialize Google API:', error)
+        }
+        
+        resolve()
+      })
+    })
+  }
+
+  // Request access token
+  private async requestAccessToken(): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (!this.tokenClient) {
+        resolve(false)
+        return
       }
 
-      const data = await response.json()
-      return data.pickedMediaItems || []
-    } catch (error) {
-      console.error('Error getting selected items:', error)
-      return []
-    }
+      // Set up callback for this specific request
+      const originalCallback = this.tokenClient.callback
+      this.tokenClient.callback = (response: any) => {
+        if (response.access_token) {
+          this.accessToken = response.access_token
+          resolve(true)
+        } else {
+          resolve(false)
+        }
+        // Restore original callback
+        this.tokenClient.callback = originalCallback
+      }
+
+      // Request token
+      this.tokenClient.requestAccessToken()
+    })
+  }
+
+  // Create and show Google Photos Picker
+  private async showPhotoPicker(): Promise<SelectedPhoto | null> {
+    return new Promise((resolve) => {
+      if (!window.google?.picker || !this.accessToken) {
+        resolve(null)
+        return
+      }
+
+      const picker = new window.google.picker.PickerBuilder()
+        .addView(window.google.picker.ViewId.PHOTOS)
+        .setOAuthToken(this.accessToken)
+        .setDeveloperKey(API_KEY)
+        .setCallback((data: any) => {
+          if (data.action === window.google.picker.Action.PICKED) {
+            const selectedItems = data.docs?.map((doc: any) => ({
+              id: doc.id,
+              baseUrl: doc.url,
+              filename: doc.name,
+              mimeType: doc.mimeType || 'image/jpeg'
+            })) || []
+            
+            resolve({ mediaItems: selectedItems })
+          } else if (data.action === window.google.picker.Action.CANCEL) {
+            resolve(null)
+          }
+        })
+        .build()
+
+      picker.setVisible(true)
+    })
   }
 
   // Download and upload photos to Supabase
-  async uploadSelectedPhotos(
-    items: PickedMediaItem[], 
-    userId: string, 
+  private async uploadPhotosToSupabase(
+    photos: SelectedPhoto['mediaItems'],
+    userId: string,
     childId: string,
     onProgress?: (current: number, total: number) => void
   ): Promise<string[]> {
     const uploadedUrls: string[] = []
 
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i]
-      onProgress?.(i + 1, items.length)
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i]
+      onProgress?.(i + 1, photos.length)
 
       try {
-        // Download image from Google Photos
-        const imageResponse = await fetch(item.mediaFile.baseUrl, {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`
-          }
-        })
-
-        if (!imageResponse.ok) {
-          console.warn(`Failed to download ${item.mediaFile.filename}`)
+        // Download the photo
+        const response = await fetch(photo.baseUrl)
+        if (!response.ok) {
+          console.warn(`Failed to download ${photo.filename}`)
           continue
         }
 
-        const imageBlob = await imageResponse.blob()
-        const imageFile = new File([imageBlob], item.mediaFile.filename, {
-          type: item.mediaFile.mimeType
+        const blob = await response.blob()
+        const file = new File([blob], photo.filename, {
+          type: photo.mimeType
         })
 
-        // Upload to Supabase Storage
-        const timestamp = Date.now()
-        const fileName = `memory/${userId}/${childId}/${timestamp}_${item.mediaFile.filename}`
+        // Upload to Supabase
+        const { fileUrl, error } = await uploadAttachmentFile(
+          file,
+          userId,
+          'memory'
+        )
 
-        const { data, error } = await supabase.storage
-          .from('attachfiles')
-          .upload(fileName, imageFile, {
-            cacheControl: '3600',
-            upsert: false
-          })
-
-        if (error) {
-          console.error(`Upload error for ${item.mediaFile.filename}:`, error)
-          continue
+        if (!error && fileUrl) {
+          uploadedUrls.push(fileUrl)
+        } else {
+          console.error(`Upload error for ${photo.filename}:`, error)
         }
-
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('attachfiles')
-          .getPublicUrl(fileName)
-
-        uploadedUrls.push(publicUrl)
-
       } catch (error) {
-        console.error(`Processing error for ${item.mediaFile.filename}:`, error)
+        console.error(`Processing error for ${photo.filename}:`, error)
       }
     }
 
     return uploadedUrls
   }
 
-  // Validate access token
-  private async validateToken(): Promise<boolean> {
-    if (!this.accessToken) return false
-
-    try {
-      const response = await fetch(
-        `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${this.accessToken}`
-      )
-      return response.ok
-    } catch {
-      return false
-    }
-  }
-
-  // Build OAuth2 authorization URL
-  private buildAuthUrl(): string {
-    if (!CLIENT_ID) {
-      throw new Error('Google Client ID is not configured. Please add VITE_GOOGLE_CLIENT_ID to your .env.local file.')
-    }
-
-    const params = new URLSearchParams({
-      client_id: CLIENT_ID,
-      redirect_uri: REDIRECT_URI,
-      response_type: 'code',
-      scope: OAUTH_SCOPES.join(' '),
-      access_type: 'offline',
-      prompt: 'consent'
-    })
-
-    return `https://accounts.google.com/oauth/authorize?${params.toString()}`
-  }
-
-  // Complete photo picker flow
+  // Main method to pick and upload photos
   async pickPhotos(
     userId: string,
     childId: string,
     onProgress?: (current: number, total: number) => void
   ): Promise<string[]> {
     try {
-      // Step 1: Authenticate
-      const authenticated = await this.authenticate()
-      if (!authenticated) {
-        throw new Error('Authentication failed')
+      // Ensure APIs are initialized
+      await this.initializeAPI()
+
+      if (!this.isInitialized) {
+        throw new Error('Google APIs failed to initialize')
       }
 
-      // Step 2: Create session
-      const session = await this.createSession()
-      if (!session) {
-        throw new Error('Failed to create picker session')
+      if (!CLIENT_ID || !API_KEY) {
+        throw new Error('Google API credentials not configured. Please add VITE_GOOGLE_CLIENT_ID and VITE_GOOGLE_API_KEY to your environment variables.')
       }
 
-      // Step 3: Open picker in new tab
-      const pickerWindow = window.open(session.pickerUri, '_blank')
-      if (!pickerWindow) {
-        throw new Error('Failed to open picker window')
+      // Request access token
+      const hasToken = await this.requestAccessToken()
+      if (!hasToken) {
+        throw new Error('Authentication failed or cancelled')
       }
 
-      // Step 4: Poll for completion
-      const completed = await this.pollSession(session.id)
-      if (!completed) {
-        throw new Error('Photo selection timed out or was cancelled')
-      }
-
-      // Step 5: Get selected items
-      const selectedItems = await this.getSelectedItems(session.id)
-      if (selectedItems.length === 0) {
+      // Show photo picker
+      const selectedPhotos = await this.showPhotoPicker()
+      if (!selectedPhotos || selectedPhotos.mediaItems.length === 0) {
         return []
       }
 
-      // Step 6: Upload to Supabase
-      const uploadedUrls = await this.uploadSelectedPhotos(
-        selectedItems,
+      // Upload photos to Supabase
+      const uploadedUrls = await this.uploadPhotosToSupabase(
+        selectedPhotos.mediaItems,
         userId,
         childId,
         onProgress
@@ -328,6 +268,20 @@ export class GooglePhotosService {
     } catch (error) {
       console.error('Photo picker error:', error)
       throw error
+    }
+  }
+
+  // Check if service is ready
+  isReady(): boolean {
+    return this.isInitialized && !!this.tokenClient
+  }
+
+  // Get configuration status
+  getConfigStatus(): { hasClientId: boolean; hasApiKey: boolean; isReady: boolean } {
+    return {
+      hasClientId: !!CLIENT_ID && CLIENT_ID !== 'your-google-client-id-here',
+      hasApiKey: !!API_KEY && API_KEY !== 'your-google-api-key-here',
+      isReady: this.isReady()
     }
   }
 }
